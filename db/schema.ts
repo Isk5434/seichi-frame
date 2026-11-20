@@ -15,3 +15,13 @@ export const media = sqliteTable("media", {
   byteSize: integer("byte_size").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [primaryKey({ columns: [table.userId, table.spotId, table.kind] })]);
+
+export const spotPhotos = sqliteTable("spot_photos", {
+  id: text("id").notNull(),
+  userId: text("user_id").notNull(),
+  spotId: text("spot_id").notNull(),
+  objectKey: text("object_key").notNull(),
+  mimeType: text("mime_type").notNull(),
+  byteSize: integer("byte_size").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [primaryKey({ columns: [table.userId, table.id] })]);

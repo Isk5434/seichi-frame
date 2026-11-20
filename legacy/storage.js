@@ -71,3 +71,65 @@ export async function photoStore(action, key, value) {
     return { cloud: response.ok };
   } catch { return { cloud: false }; }
 }
+
+function collectionKey(spotId) {
+  if (!/^[a-f0-9]{16}$/.test(spotId || '')) throw new Error('保存先が不正です。');
+  return `own-list:${spotId}`;
+}
+
+function photosEndpoint(spotId, photoId = '') {
+  const query = new URLSearchParams({ spotId });
+  if (photoId) query.set('photoId', photoId);
+  return `/api/photos?${query}`;
+}
+
+async function localCollection(spotId) {
+  const value = await localStore('get', collectionKey(spotId));
+  return Array.isArray(value) ? value : [];
+}
+
+export async function photoCollection(action, spotId, value) {
+  const key = collectionKey(spotId);
+  if (action === 'list') {
+    try {
+      const response = await fetch(photosEndpoint(spotId), { cache: 'no-store' });
+      if (!response.ok) throw new Error('Cloud read failed');
+      const metadata = (await response.json()).photos || [];
+      const remotePhotos = (await Promise.all(metadata.map(async item => {
+        const image = await fetch(photosEndpoint(spotId, item.id), { cache: 'no-store' });
+        if (!image.ok) return null;
+        return { id: item.id, blob: await image.blob(), createdAt: item.created_at };
+      }))).filter(Boolean);
+      const deviceOnly = (await localCollection(spotId)).filter(photo => photo.localOnly);
+      const photos = [...remotePhotos, ...deviceOnly];
+      await localStore('put', key, photos);
+      return photos;
+    } catch { return localCollection(spotId); }
+  }
+  if (action === 'add') {
+    const blob = await compressImage(value);
+    const provisional = { id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`, blob, createdAt: new Date().toISOString(), localOnly: true };
+    const local = await localCollection(spotId);
+    local.push(provisional);
+    await localStore('put', key, local);
+    try {
+      const response = await fetch(photosEndpoint(spotId), { method: 'POST', headers: { 'content-type': blob.type || 'image/jpeg' }, body: blob });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Cloud upload failed');
+      const remote = (await response.json()).photo;
+      provisional.id = remote.id;
+      provisional.createdAt = remote.created_at;
+      delete provisional.localOnly;
+      await localStore('put', key, local);
+      return { cloud: true, photo: provisional };
+    } catch (error) { return { cloud: false, photo: provisional, error }; }
+  }
+  if (action === 'delete') {
+    const local = await localCollection(spotId);
+    await localStore('put', key, local.filter(photo => photo.id !== value));
+    try {
+      const response = await fetch(photosEndpoint(spotId, value), { method: 'DELETE' });
+      return { cloud: response.ok };
+    } catch { return { cloud: false }; }
+  }
+  throw new Error('操作が不正です。');
+}

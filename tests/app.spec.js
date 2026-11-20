@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF9sAAAAASUVORK5CYII=', 'base64');
 const file = { name: 'trip.png', mimeType: 'image/png', buffer: png };
+const secondFile = { name: 'trip-2.png', mimeType: 'image/png', buffer: png };
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/reference**', route => route.fulfill({ contentType: 'image/png', body: png }));
   await page.route('https://tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/png', body: png }));
   await page.goto('/');
   await expect(page.locator('.spot-card')).toHaveCount(167);
-  await expect(page.locator('#reference-image')).toHaveJSProperty('naturalWidth', 1);
+  await expect.poll(() => page.locator('#reference-image').evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
 });
 test('search, map pin selection and persistent visited filter', async ({ page }) => {
   await page.locator('#search').fill('草津');
@@ -25,11 +26,19 @@ test('search, map pin selection and persistent visited filter', async ({ page })
   await expect(page.locator('.spot-card')).toHaveCount(0);
   await expect(page.locator('.list-empty')).toBeVisible();
 });
-test('photo stays associated with its spot and survives reload; compare controls and delete work', async ({ page }) => {
+test('own photos have a marked gallery, stay associated with their spot and can be selected or deleted', async ({ page }) => {
   await page.locator('[data-view=compare]').click();
-  await page.locator('#own-file').setInputFiles(file);
+  await page.locator('#own-file').setInputFiles([file, secondFile]);
   await expect(page.locator('#own-image')).toBeVisible();
   await expect(page.locator('#status')).toContainText('保存しました');
+  await expect(page.locator('.my-photo-card')).toHaveCount(2);
+  await expect(page.locator('.my-photo-badge')).toHaveCount(2);
+  await expect(page.locator('.my-photo-card.active')).toHaveCount(1);
+  await expect(page.locator('#my-photo-count')).toHaveText('2 枚');
+  await expect(page.locator('.my-photo-card').first()).toHaveCSS('border-top-width', '2px');
+  await page.locator('.my-photo-card').first().click();
+  await expect(page.locator('.my-photo-card').first()).toHaveClass(/active/);
+  await expect(page.locator('.my-photo-card').first()).toHaveCSS('border-top-width', '4px');
   await page.locator('[data-mode=overlay]').click();
   await page.locator('#opacity').fill('72');
   await page.locator('#zoom').fill('150');
@@ -46,6 +55,7 @@ test('photo stays associated with its spot and survives reload; compare controls
   await expect(page.locator('#own-image')).toBeHidden();
   await page.locator(`[data-spot-id="${originalId}"]`).click();
   await expect(page.locator('#own-image')).toBeVisible();
+  await expect(page.locator('.my-photo-card')).toHaveCount(2);
   await page.reload();
   await page.locator('[data-view=compare]').click();
   await expect(page.locator('#own-image')).toBeVisible();
@@ -54,13 +64,16 @@ test('photo stays associated with its spot and survives reload; compare controls
   expect((await download).suggestedFilename()).toMatch(/\.png$/);
   await page.locator('#delete-photo').click();
   await expect(page.locator('#status')).toContainText('削除しました');
+  await expect(page.locator('.my-photo-card')).toHaveCount(1);
   await page.reload();
   await page.locator('[data-view=compare]').click();
-  await expect(page.locator('#own-image')).toBeHidden();
+  await expect(page.locator('#own-image')).toBeVisible();
+  await expect(page.locator('.my-photo-card')).toHaveCount(1);
 });
 test('reference failure has local image fallback and persisted custom reference', async ({ page }) => {
   await page.unroute('**/api/reference**');
   await page.route('**/api/reference**', route => route.abort());
+  await page.route('**/images/**', route => route.abort());
   await page.reload();
   await page.locator('[data-view=compare]').click();
   await expect(page.locator('#reference-empty')).toContainText('表示できません');

@@ -1,6 +1,12 @@
 # 巡礼フレーム
 
-Google マイマップの167地点と368枚の参考写真を使い、自分の写真との比較や、スマホカメラでの構図合わせができる本人限定Webアプリです。
+Google マイマップの167地点と368枚の参考写真を使い、自分の写真との比較や、スマホカメラでの構図合わせができる聖地巡礼Webアプリです。
+
+## GitHub Pages版
+
+`main`へpushすると、`.github/workflows/pages.yml`が`legacy/`をGitHub Pagesへ公開します。Pages版では、自分の写真と訪問記録をブラウザのIndexedDB / localStorageに保存します。写真はスポットごとに複数枚追加でき、青緑の枠と`MY PHOTO`バッジで参考写真から区別します。
+
+GitHub Pagesは静的ホスティングのため、Pages版の写真は端末間で同期されません。スマホ・PC同期が必要な場合は、下記のCloudflare版を使用します。参考写真は`npm run prepare:pages`で軽量WebPとして`legacy/images/`へ保存済みです。
 
 ## 保存と同期
 
@@ -13,7 +19,7 @@ Google マイマップの167地点と368枚の参考写真を使い、自分の�
 
 画像は必要に応じて長辺2048px・JPEG品質86%へ縮小します。1ファイル4MB、1ユーザー合計500MBをアプリ側の上限にしています。クラウド保存に失敗しても端末内コピーを残します。次回オンライン時、同じ写真を選び直すと同期されます。
 
-データ構造は [db/schema.ts](db/schema.ts)、APIは [visits](app/api/visits/route.ts) と [media](app/api/media/route.ts) にあります。初回マイグレーションは `drizzle/0000_perpetual_jack_power.sql` です。
+データ構造は [db/schema.ts](db/schema.ts)、APIは [visits](app/api/visits/route.ts)、[media](app/api/media/route.ts)、[photos](app/api/photos/route.ts) にあります。マイグレーションは`drizzle/`にあります。
 
 ## 主な機能
 
@@ -21,6 +27,7 @@ Google マイマップの167地点と368枚の参考写真を使い、自分の�
 - 横並び・半透明重ね合わせ・スライダーによる写真比較。
 - 背面カメラ優先のプレビュー、参考写真の透明度・拡大・位置・傾き調整、三分割ガイド。
 - 写真と訪問記録のスマホ・PC間同期。
+- スポットごとの複数写真追加、`MY PHOTO`枠での識別・選択・削除。
 - 外部埋め込みを拒否するGoogle マイマップ画像を、許可した配信元だけサーバー側で中継。
 - タブ移動・地点変更・画面非表示でカメラを停止。
 
