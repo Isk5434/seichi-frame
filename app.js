@@ -1,12 +1,12 @@
-import { photoStore } from './storage.js';
+import { photoCollection, photoStore } from './storage.js';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
+const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, ownPhotos: [], ownPhotoIndex: -1, ownGalleryUrls: [], referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
 let noticeTimer;
 function notice(message) { clearTimeout(noticeTimer); $('#status').textContent = message; $('#status').hidden = false; noticeTimer = setTimeout(() => { $('#status').hidden = true; }, 8500); }
 function element(tag, className, text) { const e = document.createElement(tag); if (className) e.className = className; if (text !== undefined) e.textContent = text; return e; }
-function referenceSrc(url) { return url ? `/api/reference?url=${encodeURIComponent(url)}` : ''; }
+function referenceSrc(url, asset) { return asset || (url ? `/api/reference?url=${encodeURIComponent(url)}` : ''); }
 async function loadVisits() {
   let local = [];
   try { local = JSON.parse(localStorage.getItem('seichi-frame:visited') || '[]'); } catch { /* Ignore malformed device data. */ }
@@ -96,7 +96,7 @@ async function selectSpot(spot, fly) {
   state.customReference = null;
   if (state.referenceUrl) URL.revokeObjectURL(state.referenceUrl);
   state.referenceUrl = null;
-  setOwnPhoto(null);
+  setOwnPhotos([]);
   resetAdjustments();
   $('#spot-name').textContent = spot.name;
   $('#spot-layer').textContent = spot.layer;
@@ -106,9 +106,18 @@ async function selectSpot(spot, fly) {
   updateVisit(); renderList(); renderGallery(); showReference();
   if (fly && state.map) state.map.setView([spot.lat, spot.lng], 15);
   try {
-    const [own, reference] = await Promise.all([photoStore('get', `own:${spot.id}`), photoStore('get', `reference:${spot.id}`)]);
+    let [ownPhotos, reference] = await Promise.all([photoCollection('list', spot.id), photoStore('get', `reference:${spot.id}`)]);
     if (request !== state.selectionRequest || uploadRequest !== state.uploadRequest) return;
-    setOwnPhoto(own || null);
+    if (!ownPhotos.length) {
+      const legacyOwn = await photoStore('get', `own:${spot.id}`);
+      if (legacyOwn) {
+        const migrated = await photoCollection('add', spot.id, legacyOwn);
+        ownPhotos = [migrated.photo];
+        await photoStore('delete', `own:${spot.id}`);
+      }
+    }
+    if (request !== state.selectionRequest || uploadRequest !== state.uploadRequest) return;
+    setOwnPhotos(ownPhotos);
     if (reference) { state.customReference = reference; state.referenceUrl = URL.createObjectURL(reference); showReference(); }
   } catch { if (request === state.selectionRequest) notice('このブラウザでは保存済み写真を読み込めません。写真の比較は引き続き利用できます。'); }
 }
@@ -126,7 +135,7 @@ function renderGallery() {
     const button = element('button', `photo-card${index === state.photoIndex && !state.customReference ? ' active' : ''}`);
     button.setAttribute('aria-label', `参考写真 ${index + 1} を選択`);
     button.setAttribute('aria-pressed', String(index === state.photoIndex && !state.customReference));
-    const img = element('img'); img.src = referenceSrc(url); img.alt = `${state.selected.name} の参考写真 ${index + 1}`; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+    const img = element('img'); img.src = referenceSrc(url, state.selected.photoAssets?.[index]); img.alt = `${state.selected.name} の参考写真 ${index + 1}`; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
     img.onerror = () => { img.hidden = true; button.append(element('span', 'photo-failed', '画像を表示できません')); };
     button.append(img, element('span', '', String(index + 1)));
     button.onclick = () => { state.photoIndex = index; state.customReference = null; resetAdjustments(); renderGallery(); showReference(); };
@@ -135,7 +144,7 @@ function renderGallery() {
 }
 function showReference() {
   const originalUrl = state.selected?.photos[state.photoIndex];
-  const url = state.customReference ? state.referenceUrl : referenceSrc(originalUrl);
+  const url = state.customReference ? state.referenceUrl : referenceSrc(originalUrl, state.selected?.photoAssets?.[state.photoIndex]);
   const oldImage = $('#reference-image');
   const img = oldImage.cloneNode(false); img.removeAttribute('src'); oldImage.replaceWith(img);
   const request = ++state.referenceRequest;
@@ -158,6 +167,48 @@ function setOwnPhoto(blob) {
   img.hidden = !blob || Boolean(state.stream);
   $('#own-empty').hidden = Boolean(blob) || Boolean(state.stream);
   $('#download').disabled = !blob; $('#delete-photo').disabled = !blob;
+}
+
+function clearOwnGalleryUrls() {
+  state.ownGalleryUrls.forEach(url => URL.revokeObjectURL(url));
+  state.ownGalleryUrls = [];
+}
+
+function renderOwnGallery() {
+  clearOwnGalleryUrls();
+  $('#my-photo-count').textContent = `${state.ownPhotos.length} 枚`;
+  const gallery = $('#my-photo-gallery');
+  gallery.replaceChildren();
+  if (!state.ownPhotos.length) {
+    gallery.append(element('p', 'gallery-empty', 'このスポットで撮った写真はまだありません。'));
+    return;
+  }
+  state.ownPhotos.forEach((photo, index) => {
+    const button = element('button', `my-photo-card${index === state.ownPhotoIndex ? ' active' : ''}`);
+    button.type = 'button';
+    button.setAttribute('aria-label', `自分が追加した写真 ${index + 1} を選択`);
+    button.setAttribute('aria-pressed', String(index === state.ownPhotoIndex));
+    const url = URL.createObjectURL(photo.blob);
+    state.ownGalleryUrls.push(url);
+    const img = element('img'); img.src = url; img.alt = `自分が追加した写真 ${index + 1}`;
+    const date = new Date(photo.createdAt);
+    const dateText = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
+    button.append(img, element('span', 'my-photo-badge', 'MY PHOTO'));
+    if (dateText) button.append(element('span', 'my-photo-date', dateText));
+    button.onclick = () => selectOwnPhoto(index);
+    gallery.append(button);
+  });
+}
+
+function selectOwnPhoto(index) {
+  state.ownPhotoIndex = index >= 0 && index < state.ownPhotos.length ? index : -1;
+  setOwnPhoto(state.ownPhotoIndex >= 0 ? state.ownPhotos[state.ownPhotoIndex].blob : null);
+  renderOwnGallery();
+}
+
+function setOwnPhotos(photos, selectedIndex = 0) {
+  state.ownPhotos = Array.isArray(photos) ? photos : [];
+  selectOwnPhoto(state.ownPhotos.length ? Math.min(selectedIndex, state.ownPhotos.length - 1) : -1);
 }
 function setView(view) {
   if (view !== 'camera') stopCamera();
@@ -223,8 +274,14 @@ async function startCamera() {
   }
 }
 async function persistOwn(blob, spotId, request) {
-  if (state.selected?.id === spotId && request === state.selectionRequest) setOwnPhoto(blob);
-  try { const saved = await photoStore('put', `own:${spotId}`, blob); notice(saved.cloud ? '写真をクラウドへ同期しました。大切な写真は端末にも保存してください。' : '写真を端末内に保存しました。オンライン時に再度選ぶと同期できます。'); }
+  try {
+    const saved = await photoCollection('add', spotId, blob);
+    if (state.selected?.id === spotId && request === state.selectionRequest) {
+      state.ownPhotos.push(saved.photo);
+      selectOwnPhoto(state.ownPhotos.length - 1);
+    }
+    notice(saved.cloud ? '写真をクラウドへ同期しました。MY PHOTOの枠から選べます。' : '写真を端末内に保存しました。MY PHOTOの枠から選べます。');
+  }
   catch { notice('写真の保存に失敗しました。「写真を保存」から端末にダウンロードしてください。'); }
 }
 async function validateImage(file) {
@@ -237,18 +294,25 @@ async function validateImage(file) {
   return file;
 }
 async function upload(event, reference) {
-  const file = event.target.files[0]; event.target.value = '';
-  if (!file || !state.selected) return;
+  const files = [...event.target.files]; event.target.value = '';
+  if (!files.length || !state.selected) return;
   const spotId = state.selected.id, selectionRequest = state.selectionRequest, uploadRequest = ++state.uploadRequest;
   try {
-    await validateImage(file);
-    if (uploadRequest !== state.uploadRequest || selectionRequest !== state.selectionRequest) return;
     if (reference) {
+      const file = await validateImage(files[0]);
+      if (uploadRequest !== state.uploadRequest || selectionRequest !== state.selectionRequest) return;
       if (state.referenceUrl) URL.revokeObjectURL(state.referenceUrl);
       state.customReference = file; state.referenceUrl = URL.createObjectURL(file); renderGallery(); showReference(); resetAdjustments();
       try { const saved = await photoStore('put', `reference:${spotId}`, file); notice(saved.cloud ? '参考画像をクラウドへ同期しました。' : '参考画像を端末内に保存しました。オンライン時に再度選ぶと同期できます。'); }
       catch { notice('参考画像は表示できましたが、保存に失敗しました。'); }
-    } else { stopCamera(); setView('compare'); await persistOwn(file, spotId, selectionRequest); }
+    } else {
+      stopCamera(); setView('compare');
+      for (const file of files) {
+        await validateImage(file);
+        if (uploadRequest !== state.uploadRequest || selectionRequest !== state.selectionRequest) return;
+        await persistOwn(file, spotId, selectionRequest);
+      }
+    }
   } catch (error) { notice(error.message); }
 }
 
@@ -300,8 +364,13 @@ $('#download').onclick = () => {
   document.body.append(a); a.click(); a.remove();
 };
 $('#delete-photo').onclick = async () => {
-  const id = state.selected.id; setOwnPhoto(null);
-  try { await photoStore('delete', `own:${id}`); notice('この地点の保存済み写真を削除しました。'); } catch { notice('ブラウザ内の写真を削除できませんでした。'); }
+  if (!state.selected || state.ownPhotoIndex < 0) return;
+  const spotId = state.selected.id;
+  const photo = state.ownPhotos[state.ownPhotoIndex];
+  const next = state.ownPhotos.filter(item => item.id !== photo.id);
+  const nextIndex = Math.min(state.ownPhotoIndex, next.length - 1);
+  setOwnPhotos(next, nextIndex);
+  try { await photoCollection('delete', spotId, photo.id); notice('選択したMY PHOTOを削除しました。'); } catch { notice('ブラウザ内の写真を削除できませんでした。'); }
 };
 $('#locate').onclick = () => {
   if (!navigator.geolocation) { notice('このブラウザでは現在地を取得できません。'); return; }
