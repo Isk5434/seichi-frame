@@ -275,15 +275,24 @@ async function startCamera() {
   }
 }
 async function persistOwn(blob, spotId, request) {
+  const visible = state.selected?.id === spotId && request === state.selectionRequest;
+  const optimistic = { id: `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`, blob, createdAt: new Date().toISOString(), localOnly: true };
+  if (visible) {
+    state.ownPhotos.push(optimistic);
+    selectOwnPhoto(state.ownPhotos.length - 1);
+    notice('写真を反映しています…');
+  }
   try {
     const saved = await photoCollection('add', spotId, blob);
     if (state.selected?.id === spotId && request === state.selectionRequest) {
-      state.ownPhotos.push(saved.photo);
-      selectOwnPhoto(state.ownPhotos.length - 1);
+      const currentIndex = state.ownPhotos.findIndex(photo => photo.id === optimistic.id);
+      if (currentIndex >= 0) state.ownPhotos[currentIndex] = saved.photo;
+      else state.ownPhotos.push(saved.photo);
+      selectOwnPhoto(currentIndex >= 0 ? currentIndex : state.ownPhotos.length - 1);
     }
     notice(saved.cloud ? '写真をクラウドへ同期しました。MY PHOTOの枠から選べます。' : '写真を端末内に保存しました。MY PHOTOの枠から選べます。');
   }
-  catch { notice('写真の保存に失敗しました。「写真を保存」から端末にダウンロードしてください。'); }
+  catch { notice('写真は画面に反映しましたが、端末へ保存できませんでした。必要なら「写真を保存」からダウンロードしてください。'); }
 }
 async function validateImage(file) {
   if (!file || !file.type.startsWith('image/')) throw new Error('画像ファイルを選んでください。');

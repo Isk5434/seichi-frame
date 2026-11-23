@@ -1,4 +1,5 @@
 let dbPromise;
+function cloudEnabled() { return !location.hostname.endsWith('.github.io') && location.protocol !== 'file:'; }
 function database() {
   if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open('seichi-frame', 1);
@@ -45,6 +46,7 @@ async function compressImage(blob) {
 export async function photoStore(action, key, value) {
   const endpoint = mediaEndpoint(key);
   if (action === 'get') {
+    if (!cloudEnabled()) return localStore('get', key);
     try {
       const response = await fetch(endpoint, { cache: 'no-store' });
       if (response.ok) {
@@ -59,6 +61,7 @@ export async function photoStore(action, key, value) {
   if (action === 'put') {
     const blob = await compressImage(value);
     await localStore('put', key, blob);
+    if (!cloudEnabled()) return { cloud: false, blob };
     try {
       const response = await fetch(endpoint, { method: 'PUT', headers: { 'content-type': blob.type || 'image/jpeg' }, body: blob });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Cloud upload failed');
@@ -66,6 +69,7 @@ export async function photoStore(action, key, value) {
     } catch (error) { return { cloud: false, blob, error }; }
   }
   await localStore('delete', key);
+  if (!cloudEnabled()) return { cloud: false };
   try {
     const response = await fetch(endpoint, { method: 'DELETE' });
     return { cloud: response.ok };
@@ -91,6 +95,7 @@ async function localCollection(spotId) {
 export async function photoCollection(action, spotId, value) {
   const key = collectionKey(spotId);
   if (action === 'list') {
+    if (!cloudEnabled()) return localCollection(spotId);
     try {
       const response = await fetch(photosEndpoint(spotId), { cache: 'no-store' });
       if (!response.ok) throw new Error('Cloud read failed');
@@ -109,9 +114,18 @@ export async function photoCollection(action, spotId, value) {
   if (action === 'add') {
     const blob = await compressImage(value);
     const provisional = { id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`, blob, createdAt: new Date().toISOString(), localOnly: true };
-    const local = await localCollection(spotId);
-    local.push(provisional);
-    await localStore('put', key, local);
+    let local = [];
+    let storedLocally = false;
+    try {
+      local = await localCollection(spotId);
+      local.push(provisional);
+      await localStore('put', key, local);
+      storedLocally = true;
+    } catch { /* Cloud upload or the in-memory preview can still succeed. */ }
+    if (!cloudEnabled()) {
+      if (!storedLocally) throw new Error('Device storage unavailable');
+      return { cloud: false, photo: provisional };
+    }
     try {
       const response = await fetch(photosEndpoint(spotId), { method: 'POST', headers: { 'content-type': blob.type || 'image/jpeg' }, body: blob });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Cloud upload failed');
@@ -119,13 +133,19 @@ export async function photoCollection(action, spotId, value) {
       provisional.id = remote.id;
       provisional.createdAt = remote.created_at;
       delete provisional.localOnly;
-      await localStore('put', key, local);
+      try { await localStore('put', key, local); } catch { /* The cloud copy is authoritative. */ }
       return { cloud: true, photo: provisional };
-    } catch (error) { return { cloud: false, photo: provisional, error }; }
+    } catch (error) {
+      if (!storedLocally) throw error;
+      return { cloud: false, photo: provisional, error };
+    }
   }
   if (action === 'delete') {
-    const local = await localCollection(spotId);
-    await localStore('put', key, local.filter(photo => photo.id !== value));
+    try {
+      const local = await localCollection(spotId);
+      await localStore('put', key, local.filter(photo => photo.id !== value));
+    } catch { /* Keep deletion effective in the current in-memory gallery. */ }
+    if (!cloudEnabled()) return { cloud: false };
     try {
       const response = await fetch(photosEndpoint(spotId, value), { method: 'DELETE' });
       return { cloud: response.ok };
