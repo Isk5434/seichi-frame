@@ -35,6 +35,11 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   await expect(page.locator('#status')).toContainText('保存しました');
   await expect(page.locator('.my-photo-card')).toHaveCount(2);
   await expect(page.locator('.my-photo-badge')).toHaveCount(2);
+  await expect(page.locator('#gallery .user-photo-card')).toHaveCount(2);
+  await expect(page.locator('#gallery .user-photo-label')).toHaveCount(2);
+  const referenceBorder = await page.locator('#gallery .photo-card:not(.user-photo-card)').first().evaluate(card => getComputedStyle(card).borderTopColor);
+  const ownBorder = await page.locator('#gallery .user-photo-card').first().evaluate(card => getComputedStyle(card).borderTopColor);
+  expect(ownBorder).not.toBe(referenceBorder);
   await expect(page.locator('.my-photo-card.active')).toHaveCount(1);
   await expect(page.locator('#my-photo-count')).toHaveText('2 枚');
   await expect(page.locator('.my-photo-card').first()).toHaveCSS('border-top-width', '2px');
