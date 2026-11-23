@@ -2,7 +2,7 @@ import { photoCollection, photoStore } from './storage.js';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, ownPhotos: [], ownPhotoIndex: -1, ownGalleryUrls: [], referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
+const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, ownPhotos: [], ownPhotoIndex: -1, ownGalleryUrls: [], combinedGalleryUrls: [], referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
 let noticeTimer;
 function notice(message) { clearTimeout(noticeTimer); $('#status').textContent = message; $('#status').hidden = false; noticeTimer = setTimeout(() => { $('#status').hidden = true; }, 8500); }
 function element(tag, className, text) { const e = document.createElement(tag); if (className) e.className = className; if (text !== undefined) e.textContent = text; return e; }
@@ -129,9 +129,12 @@ function updateVisit() {
 }
 function renderGallery() {
   const photos = state.selected.photos;
-  $('#photo-count').textContent = `${photos.length} 枚 · タップして選択`;
-  $('#gallery').replaceChildren();
-  if (!photos.length) { $('#gallery').append(element('p', 'gallery-empty', 'この地点には参考写真がありません。端末から参考画像を選べます。')); return; }
+  state.combinedGalleryUrls.forEach(url => URL.revokeObjectURL(url));
+  state.combinedGalleryUrls = [];
+  $('#photo-count').textContent = `参考 ${photos.length} 枚${state.ownPhotos.length ? ` · 自分 ${state.ownPhotos.length} 枚` : ''} · タップして選択`;
+  const gallery = $('#gallery');
+  gallery.replaceChildren();
+  if (!photos.length && !state.ownPhotos.length) { gallery.append(element('p', 'gallery-empty', 'この地点には写真がありません。端末から写真を追加できます。')); return; }
   photos.forEach((url, index) => {
     const button = element('button', `photo-card${index === state.photoIndex && !state.customReference ? ' active' : ''}`);
     button.setAttribute('aria-label', `参考写真 ${index + 1} を選択`);
@@ -140,7 +143,20 @@ function renderGallery() {
     img.onerror = () => { img.hidden = true; button.append(element('span', 'photo-failed', '画像を表示できません')); };
     button.append(img, element('span', '', String(index + 1)));
     button.onclick = () => { state.photoIndex = index; state.customReference = null; resetAdjustments(); renderGallery(); showReference(); };
-    $('#gallery').append(button);
+    gallery.append(button);
+  });
+  state.ownPhotos.forEach((photo, index) => {
+    const active = index === state.ownPhotoIndex;
+    const button = element('button', `photo-card user-photo-card${active ? ' user-active' : ''}`);
+    button.type = 'button';
+    button.setAttribute('aria-label', `自分が追加した写真 ${index + 1} を選択`);
+    button.setAttribute('aria-pressed', String(active));
+    const url = URL.createObjectURL(photo.blob);
+    state.combinedGalleryUrls.push(url);
+    const img = element('img'); img.src = url; img.alt = `自分が追加した写真 ${index + 1}`;
+    button.append(img, element('span', 'user-photo-label', 'MY PHOTO'));
+    button.onclick = () => { selectOwnPhoto(index); setView('compare'); };
+    gallery.append(button);
   });
 }
 function showReference() {
@@ -182,6 +198,7 @@ function renderOwnGallery() {
   gallery.replaceChildren();
   if (!state.ownPhotos.length) {
     gallery.append(element('p', 'gallery-empty', 'このスポットで撮った写真はまだありません。'));
+    renderGallery();
     return;
   }
   state.ownPhotos.forEach((photo, index) => {
@@ -199,6 +216,7 @@ function renderOwnGallery() {
     button.onclick = () => selectOwnPhoto(index);
     gallery.append(button);
   });
+  renderGallery();
 }
 
 function selectOwnPhoto(index) {
