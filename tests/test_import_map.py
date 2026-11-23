@@ -17,7 +17,8 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(sum(len(s['photos']) for s in data['spots']), 368)
         self.assertEqual(len({s['id'] for s in data['spots']}), 167)
         shipped = json.loads((ROOT / 'legacy/data/spots.json').read_text(encoding='utf8'))
-        self.assertEqual(data['spots'], [{k: v for k, v in spot.items() if k != 'photoAssets'} for spot in shipped['spots']])
+        enriched = {'photoAssets', 'prefecture', 'city', 'location'}
+        self.assertEqual(data['spots'], [{k: v for k, v in spot.items() if k not in enriched} for spot in shipped['spots']])
 
     def test_description_is_plain_text_and_images_are_deduplicated(self):
         xml = '''<kml xmlns="http://www.opengis.net/kml/2.2"><Document><Folder><name>Layer</name>

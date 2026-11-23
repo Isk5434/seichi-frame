@@ -81,6 +81,13 @@ if __name__ == '__main__':
     result = parse_kml(source.read_bytes())
     target = ROOT / 'legacy/data/spots.json'
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        existing = {spot['id']: spot for spot in json.loads(target.read_text(encoding='utf-8'))['spots']}
+        for spot in result['spots']:
+            previous = existing.get(spot['id'], {})
+            for field in ('photoAssets', 'prefecture', 'city', 'location'):
+                if field in previous:
+                    spot[field] = previous[field]
     target.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps({'spots': len(result['spots']), 'withPhotos': sum(bool(s['photos']) for s in result['spots']),
                       'photos': sum(len(s['photos']) for s in result['spots'])}))

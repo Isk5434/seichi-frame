@@ -7,6 +7,8 @@ test.beforeEach(async ({ page }) => {
   await page.route('https://tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/png', body: png }));
   await page.goto('/');
   await expect(page.locator('.spot-card')).toHaveCount(167);
+  await expect(page.locator('.spot-location').first()).not.toBeEmpty();
+  await expect(page.locator('#administrative-area')).not.toBeEmpty();
   await expect.poll(() => page.locator('#reference-image').evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
 });
 test('search, map pin selection and persistent visited filter', async ({ page }) => {

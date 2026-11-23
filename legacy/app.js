@@ -42,7 +42,7 @@ function distance(spot) {
 function filteredSpots() {
   const query = $('#search').value.normalize('NFKC').trim().toLowerCase();
   const layer = $('#layer').value;
-  const result = state.spots.filter(s => (!layer || s.layer === layer) && (!$('#visited-only').checked || state.visited.has(s.id)) && (!query || `${s.name} ${s.layer} ${s.description}`.normalize('NFKC').toLowerCase().includes(query)));
+  const result = state.spots.filter(s => (!layer || s.layer === layer) && (!$('#visited-only').checked || state.visited.has(s.id)) && (!query || `${s.name} ${s.layer} ${s.location || ''} ${s.description}`.normalize('NFKC').toLowerCase().includes(query)));
   if (state.position) result.sort((a, b) => distance(a) - distance(b));
   return result;
 }
@@ -57,7 +57,7 @@ function renderList() {
     button.dataset.spotId = spot.id;
     button.append(element('span', 'spot-number', state.visited.has(spot.id) ? '✓' : String(index + 1).padStart(2, '0')));
     const info = element('span', 'spot-info');
-    info.append(element('strong', '', spot.name), element('small', '', `${spot.photos.length} 枚の参考写真${state.position ? ` · ${distance(spot).toFixed(1)} km` : ''}`));
+    info.append(element('strong', '', spot.name), element('span', 'spot-location', spot.location || '所在地不明'), element('small', '', `${spot.photos.length} 枚の参考写真${state.position ? ` · ${distance(spot).toFixed(1)} km` : ''}`));
     button.append(info); button.onclick = () => selectSpot(spot, true); fragment.append(button);
   });
   if (!spots.length) fragment.append(element('p', 'list-empty', '該当する場所がありません。検索語やフィルターを変更してください。'));
@@ -100,6 +100,7 @@ async function selectSpot(spot, fly) {
   resetAdjustments();
   $('#spot-name').textContent = spot.name;
   $('#spot-layer').textContent = spot.layer;
+  $('#administrative-area').textContent = spot.location || '所在地不明';
   $('#coordinates').textContent = `${spot.lat.toFixed(5)}° N / ${spot.lng.toFixed(5)}° E`;
   $('#description').textContent = spot.description || '説明文はありません。';
   $('#directions').href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${spot.lat},${spot.lng}`)}`;

@@ -10,6 +10,7 @@
     "dev": "node scripts/run-framework.mjs dev",
     "prepare:legacy": "node scripts/prepare-legacy.mjs",
     "prepare:pages": "node scripts/cache-pages-photos.mjs",
+    "data:locations": "node scripts/enrich-locations.mjs",
     "build": "npm run prepare:legacy && node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",

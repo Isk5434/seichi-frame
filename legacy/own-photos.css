@@ -23,6 +23,8 @@
 .my-photo-card img { width: 100%; height: 100%; object-fit: cover; }
 .my-photo-badge { position: absolute; left: 5px; top: 5px; padding: 3px 6px; border-radius: 4px; background: #087e96e8; color: white; font-size: 9px; font-weight: 800; letter-spacing: .7px; }
 .my-photo-date { position: absolute; right: 5px; bottom: 5px; padding: 2px 5px; border-radius: 4px; background: #07121bd9; color: #d9f7ff; font-size: 9px; }
+.spot-location { display: block; margin-top: 4px; color: #9ed8e6; font-size: 13px; line-height: 1.35; }
+.administrative-area { margin: 7px 0 2px; color: #9ed8e6; font-size: 16px; font-weight: 700; }
 
 @media (max-width: 760px) {
   .my-photos { margin: 0 12px 14px; padding: 13px; }
