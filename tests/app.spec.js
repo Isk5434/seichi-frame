@@ -88,6 +88,16 @@ test('reference failure has local image fallback and persisted custom reference'
   await page.locator('#restore-reference').click();
   await expect(page.locator('#reference-empty')).toContainText('表示できません');
 });
+test('selected photo is reflected immediately even when browser storage is unavailable', async ({ page }) => {
+  await page.addInitScript(() => { indexedDB.open = () => { throw new DOMException('Unavailable', 'InvalidStateError'); }; });
+  await page.reload();
+  await page.locator('[data-view=compare]').click();
+  await page.locator('#own-file').setInputFiles(file);
+  await expect(page.locator('#own-image')).toBeVisible();
+  await expect(page.locator('.my-photo-card')).toHaveCount(1);
+  await expect(page.locator('.my-photo-badge')).toHaveText('MY PHOTO');
+  await expect(page.locator('#status')).toContainText('画面に反映しました');
+});
 test('simulated camera captures a photo and stops stream when leaving camera', async ({ page }) => {
   await page.locator('[data-view=camera]').click();
   await page.locator('#camera-start').click();
