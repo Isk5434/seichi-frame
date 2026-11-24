@@ -2,7 +2,7 @@ import { photoCollection, photoStore } from './storage.js';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, ownPhotos: [], ownPhotoIndex: -1, ownGalleryUrls: [], combinedGalleryUrls: [], referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
+const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, ownPhotos: [], ownPhotoIndex: -1, combinedGalleryUrls: [], referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
 let noticeTimer;
 function notice(message) { clearTimeout(noticeTimer); $('#status').textContent = message; $('#status').hidden = false; noticeTimer = setTimeout(() => { $('#status').hidden = true; }, 8500); }
 function element(tag, className, text) { const e = document.createElement(tag); if (className) e.className = className; if (text !== undefined) e.textContent = text; return e; }
@@ -186,43 +186,10 @@ function setOwnPhoto(blob) {
   $('#download').disabled = !blob; $('#delete-photo').disabled = !blob;
 }
 
-function clearOwnGalleryUrls() {
-  state.ownGalleryUrls.forEach(url => URL.revokeObjectURL(url));
-  state.ownGalleryUrls = [];
-}
-
-function renderOwnGallery() {
-  clearOwnGalleryUrls();
-  $('#my-photo-count').textContent = `${state.ownPhotos.length} 枚`;
-  const gallery = $('#my-photo-gallery');
-  gallery.replaceChildren();
-  if (!state.ownPhotos.length) {
-    gallery.append(element('p', 'gallery-empty', 'このスポットで撮った写真はまだありません。'));
-    renderGallery();
-    return;
-  }
-  state.ownPhotos.forEach((photo, index) => {
-    const button = element('button', `my-photo-card${index === state.ownPhotoIndex ? ' active' : ''}`);
-    button.type = 'button';
-    button.setAttribute('aria-label', `自分が追加した写真 ${index + 1} を選択`);
-    button.setAttribute('aria-pressed', String(index === state.ownPhotoIndex));
-    const url = URL.createObjectURL(photo.blob);
-    state.ownGalleryUrls.push(url);
-    const img = element('img'); img.src = url; img.alt = `自分が追加した写真 ${index + 1}`;
-    const date = new Date(photo.createdAt);
-    const dateText = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
-    button.append(img, element('span', 'my-photo-badge', 'MY PHOTO'));
-    if (dateText) button.append(element('span', 'my-photo-date', dateText));
-    button.onclick = () => selectOwnPhoto(index);
-    gallery.append(button);
-  });
-  renderGallery();
-}
-
 function selectOwnPhoto(index) {
   state.ownPhotoIndex = index >= 0 && index < state.ownPhotos.length ? index : -1;
   setOwnPhoto(state.ownPhotoIndex >= 0 ? state.ownPhotos[state.ownPhotoIndex].blob : null);
-  renderOwnGallery();
+  renderGallery();
 }
 
 function setOwnPhotos(photos, selectedIndex = 0) {

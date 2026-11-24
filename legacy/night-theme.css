@@ -104,12 +104,6 @@ main { position: relative; isolation: isolate; }
 .text-button:hover { color: #e8fbff; }
 .segmented { border-color: var(--line); background: rgba(1, 6, 15, .58); }
 
-.my-photos { border-color: rgba(137, 208, 227, .22); background: linear-gradient(140deg, rgba(14, 32, 50, .66), rgba(12, 18, 41, .72)); }
-.my-photo-kicker { color: var(--cyan); }
-.my-photo-card { border-color: rgba(105, 193, 211, .55); background: #030812; }
-.my-photo-card.active { border-color: #9ce9f4; box-shadow: 0 0 0 2px rgba(81, 163, 184, .25), 0 0 24px rgba(86, 193, 215, .18); }
-.my-photo-badge { background: rgba(38, 128, 150, .88); }
-
 .spot-detail { border-top: 1px solid var(--line); background: linear-gradient(180deg, rgba(7, 15, 30, .35), rgba(3, 8, 18, .67)); }
 .spot-title-row h2 { font-family: var(--serif); font-size: clamp(25px, 3vw, 38px); font-weight: 400; letter-spacing: .07em; }
 .administrative-area { color: #9cced8; font-size: 15px; letter-spacing: .08em; }
@@ -117,7 +111,7 @@ main { position: relative; isolation: isolate; }
 .visit-button { border-color: rgba(199, 171, 224, .28); border-radius: 999px; background: rgba(104, 77, 135, .11); color: #d9c2e5; }
 .visit-button[aria-pressed="true"] { border-color: rgba(218, 171, 219, .55); background: rgba(151, 77, 143, .2); color: #ffe4fb; }
 .detail-links a, .file-label { color: #96cbd7; }
-.gallery-heading h3, .my-photos-heading h3 { font-family: var(--serif); font-weight: 400; letter-spacing: .08em; }
+.gallery-heading h3 { font-family: var(--serif); font-weight: 400; letter-spacing: .08em; }
 .photo-card { border-color: rgba(150, 207, 224, .13); background: #030812; }
 .photo-card.active { border-color: var(--violet); box-shadow: 0 0 0 2px rgba(157, 139, 224, .18), 0 0 25px rgba(135, 118, 214, .17); }
 .photo-card.user-photo-card { border: 2px solid rgba(77, 216, 177, .78); box-shadow: inset 0 0 0 1px rgba(116, 244, 207, .08), 0 0 18px rgba(41, 190, 151, .09); }
@@ -176,4 +170,94 @@ footer { max-width: 1450px; margin: 0 auto; padding: 35px 34px 52px; border-top:
   html { scroll-behavior: auto; }
   .night-scene::before, .night-stars, .night-haze { animation: none; }
   *, *::before, *::after { transition-duration: .01ms !important; }
+}
+
+/* Mobile-first simplification: keep the four core actions and let the night view breathe. */
+.stats, .intro-vertical, .private-badge, .aside-note, #grid-toggle, .mode-help { display: none !important; }
+.intro { justify-content: flex-start; }
+.spot-location { display: block; margin-top: 4px; color: #8fc8d5; font-size: 12px; line-height: 1.4; }
+
+@keyframes mobile-night-breathe {
+  from { transform: scale(1.01); filter: saturate(1.02) brightness(1); }
+  to { transform: scale(1.035) translate3d(0, -5px, 0); filter: saturate(1.09) brightness(1.07); }
+}
+
+@media (max-width: 820px) {
+  body::before { background: linear-gradient(180deg, rgba(1, 5, 14, .06) 0%, rgba(2, 6, 16, .02) 48%, rgba(2, 5, 13, .18) 74%, #02050d 100%); }
+  .night-scene::before { inset: -1%; background-image: url("night-sky-mobile.webp"); background-position: center bottom; animation: mobile-night-breathe 18s ease-in-out infinite alternate; }
+  .night-stars { display: none; }
+  .night-haze { opacity: .16; }
+
+  .topbar { height: 58px; padding: 0 16px; background: linear-gradient(180deg, rgba(2, 7, 18, .78), rgba(2, 7, 18, .22)); border-bottom-color: rgba(197, 231, 243, .1); backdrop-filter: blur(10px); }
+  .topbar > a:last-child { display: none; }
+  .brand { gap: 9px; }
+  .brand-icon { width: 28px; height: 28px; }
+  .brand-jp { font-size: 15px; letter-spacing: .1em; }
+
+  .intro { min-height: calc(100svh - 58px); padding: 0 22px 44px; align-items: flex-start; background: linear-gradient(180deg, transparent 0 70%, rgba(2, 5, 13, .18) 86%, #02050d 100%); }
+  .intro-copy-wrap { margin-top: clamp(80px, 14svh, 128px); max-width: 100%; }
+  .intro .eyebrow { margin-bottom: 15px; color: rgba(182, 229, 240, .9); font-size: 9px; letter-spacing: .3em; }
+  .intro h1 { font-size: clamp(38px, 11.4vw, 47px); line-height: 1.22; letter-spacing: .035em; text-shadow: 0 4px 22px rgba(0, 0, 0, .48); }
+  .intro h1 span { margin-left: 0; }
+  .intro-copy { margin-top: 20px; color: rgba(233, 242, 247, .83); font-family: var(--sans); font-size: 14px; line-height: 1.7; letter-spacing: .08em; }
+  .intro-enter { min-height: 42px; margin-top: 24px; padding: 0 20px; background: rgba(4, 13, 28, .48); font-size: 12px; backdrop-filter: blur(8px); }
+
+  .app-layout { margin: 0; padding: 0 10px 50px; background: #02050d; }
+  #pilgrimage-workspace { scroll-margin-top: 68px; }
+  .places-panel, .workspace { border: 1px solid rgba(166, 214, 232, .14); background: rgba(4, 10, 21, .96); box-shadow: none; backdrop-filter: none; }
+  .places-panel { max-height: none; margin: 0 0 10px; padding: 18px 14px 14px; border-radius: 18px; }
+  .places-head { padding-top: 0; }
+  .places-head h2 { font-size: 19px; }
+  .search-wrap { min-height: 48px; border-radius: 13px; }
+  .search-wrap input, .select-wrap select { font-size: 16px; }
+  .select-wrap select { min-height: 47px; border-radius: 13px; }
+  .list-tools { margin: 12px 4px 8px; }
+  .list-tools label { display: none; }
+  .spot-list { height: 192px; padding: 0; }
+  .spot-card { min-height: 62px; margin: 0; padding: 10px 8px; border-radius: 12px; }
+  .spot-info strong { font-size: 14px; }
+
+  .workspace { margin: 0; border-radius: 18px; }
+  .workspace-head { position: static; min-height: 60px; padding: 8px; background: rgba(3, 9, 19, .96); }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; padding: 4px; gap: 4px; }
+  .tabs button { min-height: 42px; padding: 0 12px; font-size: 14px; }
+  #map { height: min(57svh, 470px); }
+  .map-caption { min-height: 44px; }
+
+  .photo-toolbar { padding: 10px; }
+  .segmented { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+  .segmented button { min-height: 38px; font-size: 12px; }
+  .stage { margin: 0; border-width: 0; border-radius: 0; aspect-ratio: 4 / 3; }
+  .photo-actions { padding: 12px; gap: 8px; }
+  .photo-actions .button.secondary { flex: 1 0 100%; min-height: 48px; display: grid; place-items: center; border-color: rgba(137, 226, 211, .45); background: linear-gradient(135deg, rgba(28, 139, 126, .68), rgba(49, 111, 146, .68)); color: #f3fffd; font-size: 14px; }
+  .photo-actions .button.primary { flex: 1 0 100%; min-height: 48px; display: grid; place-items: center; }
+  .photo-actions .text-button { flex: 1; min-height: 40px; }
+  .adjustments { grid-template-columns: 1fr 1fr; padding: 12px; gap: 15px 12px; }
+
+  .spot-detail { padding: 20px 18px 22px; }
+  .spot-title-row { display: block; }
+  .spot-title-row h2 { font-size: 25px; line-height: 1.45; }
+  .visit-button { margin-top: 15px; }
+  .coordinates { display: none; }
+  .detail-links { margin: 16px 0 22px; }
+  .detail-links > :not(#directions) { display: none !important; }
+  #directions { display: inline-flex; min-height: 40px; padding: 0 14px; align-items: center; border: 1px solid var(--line); border-radius: 999px; }
+  .gallery-heading { align-items: end; gap: 12px; }
+  .gallery-heading h3 { font-size: 16px; }
+  .gallery-heading span { max-width: 55%; text-align: right; font-size: 10px; line-height: 1.5; }
+  .gallery { gap: 9px; padding-bottom: 8px; }
+  .photo-card { flex-basis: 124px; height: 84px; border-radius: 10px; }
+  details { margin-top: 18px; }
+  footer { margin: 0 16px; padding: 28px 4px 38px; }
+  footer span:last-child { display: none; }
+}
+
+@media (max-width: 380px) {
+  .intro h1 { font-size: 39px; }
+  .app-layout { padding-inline: 7px; }
+  .spot-detail { padding-inline: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .night-scene::before, .night-stars, .night-haze { animation: none !important; }
 }

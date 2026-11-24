@@ -33,19 +33,15 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   await page.locator('#own-file').setInputFiles([file, secondFile]);
   await expect(page.locator('#own-image')).toBeVisible();
   await expect(page.locator('#status')).toContainText('保存しました');
-  await expect(page.locator('.my-photo-card')).toHaveCount(2);
-  await expect(page.locator('.my-photo-badge')).toHaveCount(2);
   await expect(page.locator('#gallery .user-photo-card')).toHaveCount(2);
   await expect(page.locator('#gallery .user-photo-label')).toHaveCount(2);
   const referenceBorder = await page.locator('#gallery .photo-card:not(.user-photo-card)').first().evaluate(card => getComputedStyle(card).borderTopColor);
   const ownBorder = await page.locator('#gallery .user-photo-card').first().evaluate(card => getComputedStyle(card).borderTopColor);
   expect(ownBorder).not.toBe(referenceBorder);
-  await expect(page.locator('.my-photo-card.active')).toHaveCount(1);
-  await expect(page.locator('#my-photo-count')).toHaveText('2 枚');
-  await expect(page.locator('.my-photo-card').first()).toHaveCSS('border-top-width', '2px');
-  await page.locator('.my-photo-card').first().click();
-  await expect(page.locator('.my-photo-card').first()).toHaveClass(/active/);
-  await expect(page.locator('.my-photo-card').first()).toHaveCSS('border-top-width', '4px');
+  await expect(page.locator('#gallery .user-photo-card.user-active')).toHaveCount(1);
+  await expect(page.locator('#photo-count')).toContainText('自分 2 枚');
+  await page.locator('#gallery .user-photo-card').first().click();
+  await expect(page.locator('#gallery .user-photo-card').first()).toHaveClass(/user-active/);
   await page.locator('[data-mode=overlay]').click();
   await page.locator('#opacity').fill('72');
   await page.locator('#zoom').fill('150');
@@ -62,7 +58,7 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   await expect(page.locator('#own-image')).toBeHidden();
   await page.locator(`[data-spot-id="${originalId}"]`).click();
   await expect(page.locator('#own-image')).toBeVisible();
-  await expect(page.locator('.my-photo-card')).toHaveCount(2);
+  await expect(page.locator('#gallery .user-photo-card')).toHaveCount(2);
   await page.reload();
   await page.locator('[data-view=compare]').click();
   await expect(page.locator('#own-image')).toBeVisible();
@@ -71,11 +67,11 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   expect((await download).suggestedFilename()).toMatch(/\.png$/);
   await page.locator('#delete-photo').click();
   await expect(page.locator('#status')).toContainText('削除しました');
-  await expect(page.locator('.my-photo-card')).toHaveCount(1);
+  await expect(page.locator('#gallery .user-photo-card')).toHaveCount(1);
   await page.reload();
   await page.locator('[data-view=compare]').click();
   await expect(page.locator('#own-image')).toBeVisible();
-  await expect(page.locator('.my-photo-card')).toHaveCount(1);
+  await expect(page.locator('#gallery .user-photo-card')).toHaveCount(1);
 });
 test('reference failure has local image fallback and persisted custom reference', async ({ page }) => {
   await page.unroute('**/api/reference**');
@@ -99,8 +95,8 @@ test('selected photo is reflected immediately even when browser storage is unava
   await page.locator('[data-view=compare]').click();
   await page.locator('#own-file').setInputFiles(file);
   await expect(page.locator('#own-image')).toBeVisible();
-  await expect(page.locator('.my-photo-card')).toHaveCount(1);
-  await expect(page.locator('.my-photo-badge')).toHaveText('MY PHOTO');
+  await expect(page.locator('#gallery .user-photo-card')).toHaveCount(1);
+  await expect(page.locator('#gallery .user-photo-label')).toHaveText('MY PHOTO');
   await expect(page.locator('#status')).toContainText('画面に反映しました');
 });
 test('simulated camera captures a photo and stops stream when leaving camera', async ({ page }) => {
