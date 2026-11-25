@@ -2,6 +2,7 @@ import { photoCollection, photoStore } from './storage.js';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+const mobileLayout = matchMedia('(max-width: 760px)');
 const state = { spots: [], selected: null, photoIndex: 0, view: 'map', mode: 'side', visited: new Set(), map: null, markers: new Map(), ownUrl: null, ownBlob: null, ownPhotos: [], ownPhotoIndex: -1, combinedGalleryUrls: [], referenceUrl: null, customReference: null, stream: null, cameraRequest: 0, selectionRequest: 0, position: null, referenceRequest: 0, uploadRequest: 0 };
 let noticeTimer;
 function notice(message) { clearTimeout(noticeTimer); $('#status').textContent = message; $('#status').hidden = false; noticeTimer = setTimeout(() => { $('#status').hidden = true; }, 8500); }
@@ -49,16 +50,20 @@ function filteredSpots() {
 function renderList() {
   const spots = filteredSpots();
   $('#result-count').textContent = `${spots.length} 件${state.position ? '・近い順' : ''}`;
-  $('#visited-count').textContent = state.spots.filter(s => state.visited.has(s.id)).length;
   const fragment = document.createDocumentFragment();
-  spots.forEach((spot, index) => {
+  spots.forEach(spot => {
     const button = element('button', `spot-card${state.selected?.id === spot.id ? ' active' : ''}`);
     button.setAttribute('aria-pressed', String(state.selected?.id === spot.id));
     button.dataset.spotId = spot.id;
-    button.append(element('span', 'spot-number', state.visited.has(spot.id) ? '✓' : String(index + 1).padStart(2, '0')));
+    if (state.visited.has(spot.id)) button.append(element('span', 'visited-mark', '✓'));
     const info = element('span', 'spot-info');
     info.append(element('strong', '', spot.name), element('span', 'spot-location', spot.location || '所在地不明'), element('small', '', `${spot.photos.length} 枚の参考写真${state.position ? ` · ${distance(spot).toFixed(1)} km` : ''}`));
-    button.append(info); button.onclick = () => selectSpot(spot, true); fragment.append(button);
+    button.append(info);
+    button.onclick = () => {
+      void selectSpot(spot, true);
+      if (mobileLayout.matches) $('.spot-detail').scrollIntoView({ block: 'start' });
+    };
+    fragment.append(button);
   });
   if (!spots.length) fragment.append(element('p', 'list-empty', '該当する場所がありません。検索語やフィルターを変更してください。'));
   $('#spot-list').replaceChildren(fragment);
@@ -131,7 +136,6 @@ function renderGallery() {
   const photos = state.selected.photos;
   state.combinedGalleryUrls.forEach(url => URL.revokeObjectURL(url));
   state.combinedGalleryUrls = [];
-  $('#photo-count').textContent = `参考 ${photos.length} 枚${state.ownPhotos.length ? ` · 自分 ${state.ownPhotos.length} 枚` : ''} · タップして選択`;
   const gallery = $('#gallery');
   gallery.replaceChildren();
   if (!photos.length && !state.ownPhotos.length) { gallery.append(element('p', 'gallery-empty', 'この地点には写真がありません。端末から写真を追加できます。')); return; }
@@ -155,7 +159,7 @@ function renderGallery() {
     state.combinedGalleryUrls.push(url);
     const img = element('img'); img.src = url; img.alt = `自分が追加した写真 ${index + 1}`;
     button.append(img, element('span', 'user-photo-label', 'MY PHOTO'));
-    button.onclick = () => { selectOwnPhoto(index); setView('compare'); };
+    button.onclick = () => { selectOwnPhoto(index); showComparison(); };
     gallery.append(button);
   });
 }
@@ -205,11 +209,12 @@ function setView(view) {
   $('#camera-start').hidden = view !== 'camera' || Boolean(state.stream);
   $('#capture').hidden = view !== 'camera';
   $('#camera-stop').hidden = view !== 'camera' || !state.stream;
-  $('#mode-help').textContent = view === 'camera'
-    ? '参考写真を半透明に重ねて、立つ位置・向き・高さを調整します。拡大や移動は参考写真だけに適用されます。撮影するのはカメラの原画像です。'
-    : '横並び・重ね合わせ・スライダーで比較できます。調整は参考写真だけに適用され、保存する自分の写真は変更しません。';
   applyMode();
   if (view === 'map') requestAnimationFrame(() => state.map?.invalidateSize());
+}
+function showComparison() {
+  setView('compare');
+  if (mobileLayout.matches) $('.workspace').scrollIntoView({ block: 'start' });
 }
 function applyMode() {
   const mode = state.view === 'camera' ? 'overlay' : state.mode;
@@ -301,7 +306,7 @@ async function upload(event, reference) {
       try { const saved = await photoStore('put', `reference:${spotId}`, file); notice(saved.cloud ? '参考画像をクラウドへ同期しました。' : '参考画像を端末内に保存しました。オンライン時に再度選ぶと同期できます。'); }
       catch { notice('参考画像は表示できましたが、保存に失敗しました。'); }
     } else {
-      stopCamera(); setView('compare');
+      showComparison();
       for (const file of files) {
         await validateImage(file);
         if (uploadRequest !== state.uploadRequest || selectionRequest !== state.selectionRequest) return;
@@ -317,7 +322,6 @@ $$('[data-mode]').forEach(button => { button.onclick = () => { state.mode = butt
 $$('.adjustments input').forEach(input => input.addEventListener('input', adjust));
 $('#reset').onclick = resetAdjustments;
 $('#fit-map').onclick = fitMap;
-$('#grid-toggle').onclick = () => { const grid = $('.grid'); grid.hidden = !grid.hidden; $('#grid-toggle').setAttribute('aria-pressed', String(!grid.hidden)); };
 $('#own-file').onchange = event => upload(event, false);
 $('#reference-file').onchange = event => upload(event, true);
 $('#camera-start').onclick = startCamera; $('#camera-stop').onclick = stopCamera;
@@ -390,8 +394,7 @@ async function boot() {
     if (!response.ok) throw new Error();
     const data = await response.json(); state.spots = data.spots;
     if (!state.spots.length) throw new Error();
-    $('#total').textContent = state.spots.length;
-    $('#source-top').href = data.sourceUrl; $('#source-bottom').href = data.sourceUrl;
+    $('#source-bottom').href = data.sourceUrl;
     [...new Set(state.spots.map(s => s.layer))].forEach(layer => { const option = element('option', '', layer); option.value = layer; $('#layer').append(option); });
     initMap();
     await selectSpot(state.spots[0], false);

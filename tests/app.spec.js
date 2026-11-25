@@ -18,10 +18,10 @@ test('search, map pin selection and persistent visited filter', async ({ page })
   await expect(page.locator('#spot-name')).toHaveText('草津温泉');
   await page.locator('#visit').click();
   await page.reload();
+  await page.locator('.filters summary').click();
   await page.locator('#visited-only').check();
   await expect(page.locator('.spot-card')).toHaveCount(1);
   await expect(page.locator('.spot-card')).toContainText('草津温泉');
-  await expect(page.locator('#visited-count')).toHaveText('1');
   await page.locator('.leaflet-marker-icon').click();
   await expect(page.locator('#spot-name')).toHaveText('草津温泉');
   await page.locator('#search').fill('存在しない地点xyz');
@@ -39,7 +39,6 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   const ownBorder = await page.locator('#gallery .user-photo-card').first().evaluate(card => getComputedStyle(card).borderTopColor);
   expect(ownBorder).not.toBe(referenceBorder);
   await expect(page.locator('#gallery .user-photo-card.user-active')).toHaveCount(1);
-  await expect(page.locator('#photo-count')).toContainText('自分 2 枚');
   await page.locator('#gallery .user-photo-card').first().click();
   await expect(page.locator('#gallery .user-photo-card').first()).toHaveClass(/user-active/);
   await page.locator('[data-mode=overlay]').click();
@@ -130,6 +129,9 @@ test('camera permission refusal and denied location show useful errors', async (
 test('mobile fits screen and exposes comparison controls', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator('#search')).toBeInViewport();
+  await page.locator('.spot-card').first().click();
+  await expect(page.locator('.add-photo')).toBeInViewport();
   await page.locator('[data-view=compare]').click();
   await page.locator('[data-mode=overlay]').click();
   await expect(page.locator('#opacity')).toBeVisible();
