@@ -35,12 +35,16 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   await expect(page.locator('#status')).toContainText('保存しました');
   await expect(page.locator('#gallery .user-photo-card')).toHaveCount(2);
   await expect(page.locator('#gallery .user-photo-label')).toHaveCount(2);
+  await expect(page.locator('#gallery .photo-card').nth(1)).toHaveClass(/user-photo-card/);
   const referenceBorder = await page.locator('#gallery .photo-card:not(.user-photo-card)').first().evaluate(card => getComputedStyle(card).borderTopColor);
   const ownBorder = await page.locator('#gallery .user-photo-card').first().evaluate(card => getComputedStyle(card).borderTopColor);
   expect(ownBorder).not.toBe(referenceBorder);
   await expect(page.locator('#gallery .user-photo-card.user-active')).toHaveCount(1);
-  await page.locator('#gallery .user-photo-card').first().click();
+  await page.locator('#gallery .photo-card').first().click();
   await expect(page.locator('#photo-preview-image')).toBeVisible();
+  await page.locator('#photo-preview-next').click();
+  await expect(page.locator('#photo-preview-image')).toHaveAttribute('alt', '自分が追加した写真 1');
+  expect(await page.locator('#photo-preview-image').evaluate(image => image.getAnimations().length)).toBe(0);
   await page.locator('#photo-preview-compare').click();
   await expect(page.locator('#gallery .user-photo-card').first()).toHaveClass(/user-active/);
   await page.locator('[data-mode=overlay]').click();
@@ -54,7 +58,7 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   await expect(page.locator('#stage')).toHaveCSS('--wipe', '25%');
   await page.locator('#reset').click();
   await expect(page.locator('#zoom-value')).toHaveText('100%');
-  const originalId = await page.locator('.spot-card').first().getAttribute('data-spot-id');
+  const originalId = await page.locator('.spot-card.active').getAttribute('data-spot-id');
   await page.locator('.spot-card').nth(1).click();
   await expect(page.locator('#own-image')).toBeHidden();
   await page.locator(`[data-spot-id="${originalId}"]`).click();
@@ -132,7 +136,7 @@ test('mobile fits screen and exposes comparison controls', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('#search')).toBeInViewport();
-  await page.locator('.spot-card').first().click();
+  await page.locator('.spot-card.active').click();
   await expect(page.locator('.add-photo')).toBeInViewport();
   await expect(page.locator('body')).toHaveCSS('overflow-y', 'visible');
   expect(await page.evaluate(() => getComputedStyle(document.body, '::before').position)).toBe('fixed');
@@ -159,4 +163,26 @@ test('mobile fits screen and exposes comparison controls', async ({ page }) => {
   await expect(page.locator('#opacity')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/mobile.png', fullPage: true });
+});
+
+test('prefecture list collapses and follows scroll, while PV filters and timestamps use the source edition', async ({ page }) => {
+  const tags = page.locator('.prefecture-tag');
+  await expect(tags.first()).toHaveText('北海道');
+  await expect(tags.last()).toHaveText('沖縄県');
+  await page.locator('#spot-list').evaluate(list => {
+    const nextGroup = list.children[1];
+    list.scrollTop += nextGroup.getBoundingClientRect().top - list.getBoundingClientRect().top + 12;
+  });
+  const sticky = await tags.nth(1).evaluate(tag => tag.getBoundingClientRect().top);
+  const listTop = await page.locator('#spot-list').evaluate(list => list.getBoundingClientRect().top);
+  expect(Math.abs(sticky - listTop)).toBeLessThan(4);
+  await page.locator('#places-toggle').click();
+  await expect(page.locator('#places-content')).toBeHidden();
+  await page.locator('#places-toggle').click();
+  await page.locator('.filters summary').click();
+  await page.locator('#layer').selectOption('関東編');
+  await page.locator('#search').fill('海ほたる');
+  await page.locator('.spot-card').click();
+  await page.getByText('元のマップの説明・出典', { exact: true }).click();
+  await expect(page.getByRole('link', { name: 'PV 関東編 1:39' })).toHaveAttribute('href', 'https://www.youtube.com/watch?v=uqmphKHPabI&t=99s');
 });

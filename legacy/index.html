@@ -4,8 +4,8 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#030812"><meta name="description" content="あの場面と、同じ景色を。聖地の写真を探して、比べて、構図を合わせる夜の巡礼ノート。">
   <title>巡礼フレーム — あの場面と、同じ景色を。</title>
-  <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="field-guide.css?v=full-photo">
-  <script defer src="vendor/leaflet.js"></script><script type="module" src="app.js?v=full-photo"></script>
+  <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="field-guide.css?v=pv-guide">
+  <script defer src="vendor/leaflet.js"></script><script type="module" src="app.js?v=pv-guide"></script>
 </head>
 <body>
   <main>
@@ -14,15 +14,17 @@
     </header>
     <div class="app-layout" id="pilgrimage-workspace">
       <aside class="places-panel" aria-label="巡礼スポット一覧">
-        <div class="places-head"><h2>場所を探す</h2><button id="locate" class="text-button">現在地</button></div>
+        <div class="places-head"><h2><button id="places-toggle" type="button" aria-expanded="true" aria-controls="places-content">場所を探す</button></h2><button id="locate" class="text-button">現在地</button></div>
+        <div id="places-content">
         <label class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="場所・作品・キーワードで検索" aria-label="場所・作品・キーワードで検索"></label>
         <details class="filters"><summary>絞り込み</summary>
-          <label class="select-wrap"><span class="sr-only">レイヤー</span><select id="layer"><option value="">すべてのレイヤー</option></select></label>
+          <label class="select-wrap"><span class="sr-only">PVの編</span><select id="layer"><option value="">すべてのPV・地点</option></select></label>
           <label><input type="checkbox" id="visited-only"> 訪問済み</label>
         </details>
         <p id="result-count" class="sr-only" role="status">読み込み中…</p>
         <div id="spot-list" class="spot-list"></div>
         <p class="aside-note"><span id="sync-status">クラウド同期を確認中…</span><br>通信できない間も端末内に保存します。</p>
+        </div>
       </aside>
       <section class="workspace" aria-label="スポットの写真と地図">
         <div class="workspace-head"><nav class="tabs" aria-label="表示モード"><button data-view="map" class="active" aria-pressed="true">地図</button><button data-view="compare" aria-pressed="false">比較</button><button data-view="camera" aria-pressed="false">撮影</button></nav></div>
@@ -47,7 +49,7 @@
         <div class="spot-detail"><div class="spot-title-row"><div><p id="spot-layer" class="eyebrow"></p><h2 id="spot-name">場所を読み込んでいます</h2><p id="administrative-area" class="administrative-area"></p><p id="coordinates" class="coordinates"></p></div><button id="visit" class="visit-button" aria-pressed="false">♡ 訪問済みにする</button></div>
           <div class="detail-links"><a id="directions" target="_blank" rel="noopener noreferrer">Google マップで経路</a><a id="original-photo" target="_blank" rel="noopener noreferrer" hidden>参考写真の配信元</a><label class="text-button file-label">参考画像を端末から選ぶ<input id="reference-file" type="file" accept="image/*" class="sr-only"></label><button id="restore-reference" class="text-button" hidden>元の参考写真に戻す</button></div>
           <div class="gallery-heading"><h3>この場所の参考写真</h3><label class="button add-photo">＋ 写真を追加<input id="own-file" type="file" accept="image/*" multiple class="sr-only"></label></div><div id="gallery" class="gallery"></div>
-          <details><summary>元のマップの説明・出典</summary><p id="description" class="description"></p><a id="source-bottom" target="_blank" rel="noopener noreferrer">元のGoogle マイマップを開く</a></details>
+          <details><summary>元のマップの説明・出典</summary><div id="pv-links" class="pv-links"></div><p id="description" class="description"></p><a id="source-bottom" target="_blank" rel="noopener noreferrer">元のGoogle マイマップを開く</a></details>
         </div>
       </section>
     </div>
@@ -64,9 +66,9 @@
         <p id="photo-preview-error" role="status" hidden>写真を表示できませんでした。</p>
       </div>
       <footer>
-        <button id="photo-preview-prev" class="button">前へ</button>
+        <button id="photo-preview-prev" class="button" aria-label="前の写真">‹</button>
         <span id="photo-preview-count" aria-live="polite"></span>
-        <button id="photo-preview-next" class="button">次へ</button>
+        <button id="photo-preview-next" class="button" aria-label="次の写真">›</button>
         <button id="photo-preview-compare" class="button">この写真で比較</button>
       </footer>
     </div>

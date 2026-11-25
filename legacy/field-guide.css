@@ -48,6 +48,16 @@ main { max-width: 1200px; padding: 0 24px; }
 }
 .places-head { margin-bottom: 10px; }
 .places-head h2 { font-size: 1.125rem; }
+#places-toggle {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font-weight: inherit;
+}
+#places-toggle::after { content: ' ▾'; color: var(--accent); }
+#places-toggle[aria-expanded="false"]::after { content: ' ▸'; }
+.places-panel:has(#places-content[hidden]) .places-head { margin-bottom: 0; }
 .text-button, .visit-button, .filters summary, .spot-detail details summary { min-height: 44px; }
 .search-wrap { min-height: 48px; border-radius: 2px; background: #07111dbf; }
 .search-wrap input, .select-wrap select { font-size: 1rem; }
@@ -55,6 +65,39 @@ main { max-width: 1200px; padding: 0 24px; }
 .filters summary, .spot-detail details summary { width: fit-content; padding: 10px 0; }
 .filters .select-wrap { margin-top: 0; }
 .spot-list { padding: 2px; }
+.prefecture-tag {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 4px;
+  padding: 5px 9px;
+  color: #e8f4ff;
+  background: #172638;
+  border-left: 2px solid var(--frame-selected);
+  font-size: .8125rem;
+}
+.pv-editions, .pv-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-editions { margin-top: 5px; }
+.pv-edition {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid #507a85;
+  color: #cff2ec;
+  background: #10272f;
+  font-size: .75rem;
+  line-height: 1.4;
+}
+.pv-edition-national { border-color: #9c7954; color: #ffe2bf; background: #32251b; }
+#spot-layer .pv-edition + .pv-edition { margin-left: 6px; }
+.pv-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--frame-edge);
+  border-radius: 2px;
+  background: #142135;
+}
 .spot-card { min-height: 62px; margin-bottom: 3px; }
 .spot-card { border-radius: 2px; }
 .spot-card.active {
@@ -145,7 +188,8 @@ body:has(.photo-preview[open]) { overflow: hidden; }
   padding-block: 8px max(8px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--frame-edge);
 }
-.photo-preview h2 { font-size: .9375rem; }
+.photo-preview h2 { min-width: 0; font-size: .9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-preview header form { flex: 0 0 auto; }
 .photo-preview button { min-height: 44px; padding-inline: 10px; border-radius: 2px; }
 .photo-preview-stage {
   display: grid;
@@ -162,6 +206,7 @@ body:has(.photo-preview[open]) { overflow: hidden; }
   object-fit: contain;
 }
 #photo-preview-count { min-width: 3ch; text-align: center; font-size: .875rem; }
+#photo-preview-prev, #photo-preview-next { min-width: 44px; font-size: 1.5rem; }
 #photo-preview-compare { margin-left: auto; border-color: var(--frame-edge); }
 
 @media (max-width: 760px) {
