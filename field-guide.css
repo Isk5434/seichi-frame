@@ -1,0 +1,101 @@
+:root {
+  color-scheme: dark;
+  color: #f2f3f6;
+  background: #0a101a;
+  --panel: #111a27;
+  --border: #303d50;
+  --muted: #b4c0d0;
+  --accent: #c3d8ff;
+  --serif: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+main { max-width: 1200px; padding: 0 24px; }
+.cover {
+  min-height: clamp(310px, 37vw, 430px);
+  display: flex;
+  align-items: center;
+  margin: 0 -24px;
+  padding: 24px clamp(24px, 7vw, 90px) 46px;
+  background:
+    linear-gradient(90deg, #060e1ab8, #060e1a15 68%, transparent),
+    #101e31 url("night-city-cover.webp") center 47% / cover no-repeat;
+}
+.cover-copy { text-shadow: 0 2px 18px #050a12; }
+.cover-copy p { margin: 0 0 14px; font-size: .875rem; letter-spacing: .17em; }
+.cover h1 {
+  margin: 0;
+  font: 500 clamp(2rem, 5vw, 4.25rem)/1.24 var(--serif);
+  letter-spacing: .045em;
+}
+.app-layout { margin-top: 20px; grid-template-columns: 290px minmax(0, 1fr); }
+.places-head { margin-bottom: 10px; }
+.places-head h2 { font-size: 1.125rem; }
+.text-button, .visit-button, .filters summary, .spot-detail details summary { min-height: 44px; }
+.search-wrap { min-height: 48px; }
+.search-wrap input, .select-wrap select { font-size: 1rem; }
+.filters { border: 0; margin: 4px 0 0; padding: 0; }
+.filters summary, .spot-detail details summary { width: fit-content; padding: 10px 0; }
+.filters .select-wrap { margin-top: 0; }
+.spot-list { padding: 2px; }
+.spot-card { min-height: 62px; margin-bottom: 3px; }
+.spot-card.active { background: #1c2b40; border-color: #607896; }
+.spot-info strong { font-size: .9375rem; }
+.spot-location { display: block; margin-top: 2px; color: var(--muted); font-size: .8125rem; }
+.visited-mark { order: 1; margin-left: auto; color: #91dec8; }
+
+.workspace-head { padding: 6px 12px; }
+.tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.tabs button, .segmented button { min-height: 44px; padding: 8px; font-size: .875rem; }
+.tabs button { border: 0; border-radius: 8px; }
+.tabs button.active, .segmented button.active { color: #f1f6ff; background: #24354f; }
+#map { background: #1b293a; }
+.map-caption { justify-content: flex-end; padding-block: 0; }
+.map-pin { background: #42608c; }
+.map-pin.selected { background: #cc8346; }
+.map-pin.visited { background: #357e70; }
+
+.stage { background: #070d17; }
+.photo-toolbar:has(#compare-modes[hidden]) { display: none; }
+.segmented { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+.spot-detail { border-top: 1px solid var(--border); }
+.spot-title-row h2 { font-family: var(--serif); font-size: clamp(1.35rem, 3vw, 2rem); }
+.administrative-area { margin: 5px 0 0; color: #c3d8ff; font-size: .9375rem; }
+.coordinates { display: none; }
+.visit-button { background: #151e2d; }
+.detail-links { margin: 12px 0; }
+.detail-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.gallery-heading { gap: 10px; }
+.gallery-heading h3 { font-size: .9375rem; }
+.add-photo {
+  min-height: 44px;
+  min-inline-size: max-content;
+  padding: 10px 12px;
+  background: #b8e5d9;
+  color: #0f302b;
+  font-weight: 700;
+}
+.photo-card { border-color: #42526b; }
+.photo-card.active { border-color: #bfd5fd; }
+.photo-card.user-photo-card { border-color: #5fb9a6; }
+.photo-card.user-photo-card.user-active { border: 3px solid #a4e9d6; }
+.photo-card .user-photo-label { top: 6px; bottom: auto; background: #124d43; color: #f1fff9; font-weight: 700; }
+
+@media (max-width: 760px) {
+  main { padding: 0 12px; }
+  .cover {
+    min-height: clamp(258px, 73vw, 340px);
+    margin-inline: -12px;
+    padding: 20px 24px 44px;
+    background-position: 60% 52%;
+  }
+  .cover h1 { font-size: clamp(2rem, 9vw, 3rem); }
+  .app-layout { margin-top: 12px; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  .places-panel { padding: 12px; }
+  .spot-list { height: 150px; }
+  .spot-detail { padding: 16px; scroll-margin-top: 12px; }
+  .workspace { scroll-margin-top: 12px; }
+  #map { height: clamp(260px, 47svh, 400px); }
+  .spot-title-row { flex-flow: row wrap; gap: 7px 12px; }
+  .photo-actions .text-button { flex: 1; }
+  .photo-card { flex-basis: 128px; height: 87px; }
+}
