@@ -6,6 +6,10 @@
   --border: #303d50;
   --muted: #b4c0d0;
   --accent: #c3d8ff;
+  --frame-edge: rgb(193 221 238 / 44%);
+  --frame-inset: rgb(185 216 235 / 14%);
+  --frame-selected: #c4deed;
+  --frame-fill: rgb(7 15 26 / 73%);
   --serif: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
 }
 
@@ -36,27 +40,42 @@ main { max-width: 1200px; padding: 0 24px; }
   letter-spacing: .045em;
 }
 .app-layout { margin-top: 20px; grid-template-columns: 290px minmax(0, 1fr); }
-.places-panel, .workspace { background: rgb(13 23 37 / 89%); }
+.places-panel, .workspace, .photo-preview {
+  border: 1px solid var(--frame-edge);
+  border-radius: 2px;
+  background: var(--frame-fill);
+  box-shadow: inset 0 0 0 3px #0b142259, inset 0 0 0 4px var(--frame-inset), 0 10px 30px #0004;
+}
 .places-head { margin-bottom: 10px; }
 .places-head h2 { font-size: 1.125rem; }
 .text-button, .visit-button, .filters summary, .spot-detail details summary { min-height: 44px; }
-.search-wrap { min-height: 48px; }
+.search-wrap { min-height: 48px; border-radius: 2px; background: #07111dbf; }
 .search-wrap input, .select-wrap select { font-size: 1rem; }
 .filters { border: 0; margin: 4px 0 0; padding: 0; }
 .filters summary, .spot-detail details summary { width: fit-content; padding: 10px 0; }
 .filters .select-wrap { margin-top: 0; }
 .spot-list { padding: 2px; }
 .spot-card { min-height: 62px; margin-bottom: 3px; }
-.spot-card.active { background: #1c2b40; border-color: #607896; }
+.spot-card { border-radius: 2px; }
+.spot-card.active {
+  background: #182637a6;
+  border-color: var(--frame-selected);
+  box-shadow: inset 0 0 0 2px var(--frame-inset);
+}
 .spot-info strong { font-size: .9375rem; }
 .spot-location { display: block; margin-top: 2px; color: var(--muted); font-size: .8125rem; }
 .visited-mark { order: 1; margin-left: auto; color: #91dec8; }
 
-.workspace-head { padding: 6px 12px; }
+.workspace-head { padding: 8px 12px; border-bottom-color: var(--frame-inset); }
 .tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .tabs button, .segmented button { min-height: 44px; padding: 8px; font-size: .875rem; }
-.tabs button { border: 0; border-radius: 8px; }
-.tabs button.active, .segmented button.active { color: #f1f6ff; background: #24354f; }
+.tabs button, .segmented button { border: 1px solid transparent; border-radius: 2px; }
+.tabs button.active, .segmented button.active {
+  color: #f1f6ff;
+  background: #17283aa8;
+  border-color: var(--frame-selected);
+  box-shadow: inset 0 0 0 2px var(--frame-inset);
+}
 #map { background: #1b293a; }
 .map-caption { justify-content: flex-end; padding-block: 0; }
 .map-pin { background: #42608c; }
@@ -83,8 +102,8 @@ main { max-width: 1200px; padding: 0 24px; }
   color: #0f302b;
   font-weight: 700;
 }
-.photo-card { border-color: #42526b; }
-.photo-card.active { border-color: #bfd5fd; }
+.photo-card { border-color: #607389; border-radius: 2px; }
+.photo-card.active { border-color: var(--frame-selected); }
 .photo-card.user-photo-card { border-color: #5fb9a6; }
 .photo-card.user-photo-card.user-active { border: 3px solid #a4e9d6; }
 .photo-card .user-photo-label { top: 6px; bottom: auto; background: #124d43; color: #f1fff9; font-weight: 700; }
@@ -95,13 +114,10 @@ body:has(.photo-preview[open]) { overflow: hidden; }
   width: min(940px, calc(100% - 24px));
   max-height: calc(100dvh - 24px);
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #101927;
   color: inherit;
 }
-.photo-preview::backdrop { background: rgb(3 7 14 / 83%); }
-.photo-preview-content { padding: 12px; display: grid; gap: 10px; }
+.photo-preview::backdrop { background: rgb(3 7 14 / 70%); }
+.photo-preview-content { padding: 14px; display: grid; gap: 10px; }
 .photo-preview header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .photo-preview h2 { font-size: .9375rem; }
 .photo-preview button { min-height: 44px; }
@@ -110,7 +126,8 @@ body:has(.photo-preview[open]) { overflow: hidden; }
   width: 100%;
   max-height: min(72dvh, calc(100dvh - 155px));
   object-fit: contain;
-  border-radius: 8px;
+  border: 1px solid var(--frame-edge);
+  border-radius: 1px;
 }
 #photo-preview-compare { justify-self: end; }
 
