@@ -4,8 +4,8 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#030812"><meta name="description" content="あの場面と、同じ景色を。聖地の写真を探して、比べて、構図を合わせる夜の巡礼ノート。">
   <title>巡礼フレーム — あの場面と、同じ景色を。</title>
-  <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="field-guide.css?v=glass-frame">
-  <script defer src="vendor/leaflet.js"></script><script type="module" src="app.js?v=photo-preview"></script>
+  <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="field-guide.css?v=full-photo">
+  <script defer src="vendor/leaflet.js"></script><script type="module" src="app.js?v=full-photo"></script>
 </head>
 <body>
   <main>
@@ -59,9 +59,16 @@
         <h2 id="photo-preview-title"></h2>
         <form method="dialog"><button class="button" autofocus>閉じる</button></form>
       </header>
-      <img id="photo-preview-image" alt="" referrerpolicy="no-referrer">
-      <p id="photo-preview-error" role="status" hidden>写真を表示できませんでした。</p>
-      <button id="photo-preview-compare" class="button">この写真で比較</button>
+      <div class="photo-preview-stage">
+        <img id="photo-preview-image" alt="" draggable="false" referrerpolicy="no-referrer">
+        <p id="photo-preview-error" role="status" hidden>写真を表示できませんでした。</p>
+      </div>
+      <footer>
+        <button id="photo-preview-prev" class="button">前へ</button>
+        <span id="photo-preview-count" aria-live="polite"></span>
+        <button id="photo-preview-next" class="button">次へ</button>
+        <button id="photo-preview-compare" class="button">この写真で比較</button>
+      </footer>
     </div>
   </dialog>
   <div id="status" class="toast" role="status" aria-live="polite" hidden></div>

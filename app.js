@@ -137,6 +137,7 @@ function renderGallery() {
   state.combinedGalleryUrls.forEach(url => URL.revokeObjectURL(url));
   state.combinedGalleryUrls = [];
   const gallery = $('#gallery');
+  const previewPhotos = [];
   gallery.replaceChildren();
   if (!photos.length && !state.ownPhotos.length) { gallery.append(element('p', 'gallery-empty', 'この地点には写真がありません。端末から写真を追加できます。')); return; }
   photos.forEach((url, index) => {
@@ -147,7 +148,7 @@ function renderGallery() {
     const img = element('img'); img.src = referenceSrc(url, state.selected.photoAssets?.[index]); img.alt = `${state.selected.name} の参考写真 ${index + 1}`; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
     img.onerror = () => { img.hidden = true; button.append(element('span', 'photo-failed', '画像を表示できません')); };
     button.append(img, element('span', '', String(index + 1)));
-    button.onclick = () => openPhotoPreview(img.src, img.alt, () => {
+    addPreviewPhoto(previewPhotos, button, img, img.src, () => {
       state.photoIndex = index;
       state.customReference = null;
       resetAdjustments();
@@ -167,49 +168,137 @@ function renderGallery() {
     state.combinedGalleryUrls.push(url);
     const img = element('img'); img.src = url; img.alt = `自分が追加した写真 ${index + 1}`;
     button.append(img, element('span', 'user-photo-label', 'MY PHOTO'));
-    button.onclick = () => openPhotoPreview(photo.blob, img.alt, () => {
+    addPreviewPhoto(previewPhotos, button, img, photo.blob, () => {
       const photoIndex = state.ownPhotos.indexOf(photo);
       selectOwnPhoto(photoIndex < 0 ? index : photoIndex);
     });
     gallery.append(button);
   });
 }
+
+function addPreviewPhoto(photos, button, thumbnail, source, select) {
+  const index = photos.length;
+  photos.push({ source, title: thumbnail.alt, select });
+  button.onclick = () => openPhotoPreview(photos, index, thumbnail);
+}
+
 const photoPreview = $('#photo-preview');
+const previewStage = $('.photo-preview-stage');
 const previewImage = $('#photo-preview-image');
 const previewError = $('#photo-preview-error');
 const previewCompare = $('#photo-preview-compare');
+const previewPrev = $('#photo-preview-prev');
+const previewNext = $('#photo-preview-next');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let previewPhotos = [];
+let previewIndex = 0;
 let previewObjectUrl;
+let previewAnimation;
+let swipe;
 
-function openPhotoPreview(source, title, selectForComparison) {
+function openPhotoPreview(photos, index, thumbnail) {
+  const start = thumbnail.getBoundingClientRect();
+  previewPhotos = photos;
+  showPreviewPhoto(index);
+  photoPreview.showModal();
+  if (reducedMotion.matches) return;
+  const end = previewStage.getBoundingClientRect();
+  const fit = Math.min(end.width / thumbnail.naturalWidth, end.height / thumbnail.naturalHeight);
+  const scale = Math.min(1, start.width / (thumbnail.naturalWidth * fit));
+  const x = start.left + start.width / 2 - (end.left + end.width / 2);
+  const y = start.top + start.height / 2 - (end.top + end.height / 2);
+  const transform = Number.isFinite(scale) ? `translate(${x}px, ${y}px) scale(${scale})` : 'scale(.94)';
+  previewAnimation = previewImage.animate(
+    [{ transform, opacity: .45 }, { transform: 'none', opacity: 1 }],
+    { duration: 320, easing: 'cubic-bezier(.2,.75,.2,1)' },
+  );
+}
+
+function releasePreviewImage() {
+  previewAnimation?.cancel();
+  previewImage.style.translate = '';
+  previewImage.removeAttribute('src');
+  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+  previewObjectUrl = undefined;
+}
+
+function showPreviewPhoto(index, direction = 0) {
+  releasePreviewImage();
+  previewIndex = index;
+  const { source, title } = previewPhotos[index];
   $('#photo-preview-title').textContent = title;
+  $('#photo-preview-count').textContent = `${index + 1} / ${previewPhotos.length}`;
+  previewPrev.disabled = index === 0;
+  previewNext.disabled = index === previewPhotos.length - 1;
   previewImage.alt = title;
   previewImage.hidden = false;
   previewError.hidden = true;
   previewCompare.disabled = false;
   previewObjectUrl = source instanceof Blob ? URL.createObjectURL(source) : undefined;
   previewImage.src = previewObjectUrl || source;
-  previewCompare.onclick = () => {
-    photoPreview.close();
-    selectForComparison();
-    showComparison();
-    $('[data-view="compare"]').focus({ preventScroll: true });
-  };
-  photoPreview.showModal();
+  if (direction && !reducedMotion.matches) {
+    previewAnimation = previewImage.animate(
+      [{ transform: `translateX(${direction * 12}%)`, opacity: .3 }, { transform: 'none', opacity: 1 }],
+      { duration: 210, easing: 'ease-out' },
+    );
+  }
 }
+
+function stepPreview(direction) {
+  const index = previewIndex + direction;
+  if (index >= 0 && index < previewPhotos.length) showPreviewPhoto(index, direction);
+}
+
+previewPrev.onclick = () => stepPreview(-1);
+previewNext.onclick = () => stepPreview(1);
+previewCompare.onclick = () => {
+  const photo = previewPhotos[previewIndex];
+  photoPreview.close();
+  photo.select();
+  showComparison();
+  $('[data-view="compare"]').focus({ preventScroll: true });
+};
 
 previewImage.onerror = () => {
   previewImage.hidden = true;
   previewError.hidden = false;
   previewCompare.disabled = true;
 };
-photoPreview.addEventListener('click', event => {
-  if (event.target === photoPreview) photoPreview.close();
+photoPreview.addEventListener('keydown', event => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    stepPreview(event.key === 'ArrowLeft' ? -1 : 1);
+  }
+});
+
+previewStage.addEventListener('pointerdown', event => {
+  if (event.pointerType !== 'touch' || !event.isPrimary) return;
+  swipe = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  previewAnimation?.cancel();
+  previewStage.setPointerCapture(event.pointerId);
+});
+previewStage.addEventListener('pointermove', event => {
+  if (swipe?.id !== event.pointerId || reducedMotion.matches) return;
+  const x = event.clientX - swipe.x;
+  if (Math.abs(x) > Math.abs(event.clientY - swipe.y)) previewImage.style.translate = `${x * .65}px`;
+});
+previewStage.addEventListener('pointerup', event => {
+  if (swipe?.id !== event.pointerId) return;
+  const x = event.clientX - swipe.x;
+  const y = event.clientY - swipe.y;
+  swipe = undefined;
+  previewImage.style.translate = '';
+  if (Math.abs(x) > 44 && Math.abs(x) > Math.abs(y) * 1.3) stepPreview(x < 0 ? 1 : -1);
+});
+previewStage.addEventListener('lostpointercapture', () => {
+  swipe = undefined;
+  previewImage.style.translate = '';
 });
 photoPreview.addEventListener('close', () => {
-  previewImage.removeAttribute('src');
-  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-  previewObjectUrl = undefined;
-  previewCompare.onclick = null;
+  if (photoPreview.open) return;
+  releasePreviewImage();
+  previewPhotos = [];
+  swipe = undefined;
 });
 function showReference() {
   const originalUrl = state.selected?.photos[state.photoIndex];
