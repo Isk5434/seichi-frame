@@ -186,3 +186,37 @@ test('prefecture list collapses and follows scroll, while PV filters and timesta
   await page.getByText('元のマップの説明・出典', { exact: true }).click();
   await expect(page.getByRole('link', { name: 'PV 関東編 1:39' })).toHaveAttribute('href', 'https://www.youtube.com/watch?v=uqmphKHPabI&t=99s');
 });
+
+test('mobile background presets and personal photos persist in the browser', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const body = page.locator('body');
+  const open = page.getByRole('button', { name: '背景', exact: true });
+  const dialog = page.getByRole('dialog', { name: '背景を選ぶ' });
+  const background = () => body.evaluate(node => getComputedStyle(node, '::before').backgroundImage);
+
+  await open.click();
+  await dialog.screenshot({ path: 'test-results/background-picker.png' });
+  await dialog.getByRole('button', { name: '星空' }).click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(background).toContain('night-sky-mobile.webp');
+  await page.reload();
+  await expect(body).toHaveAttribute('data-background', 'stars');
+
+  await open.click();
+  await page.locator('#background-file').setInputFiles({ ...file, buffer: Buffer.from('not an image') });
+  await expect(dialog.getByRole('status')).toContainText('この画像形式を開けません');
+  await expect(body).toHaveAttribute('data-background', 'stars');
+  await page.locator('#background-file').setInputFiles(file);
+  await expect(dialog).toBeHidden();
+  await expect.poll(background).toContain('blob:');
+  await page.reload();
+  await expect(body).toHaveAttribute('data-background', 'photo');
+  await expect.poll(background).toContain('blob:');
+
+  await open.click();
+  await dialog.getByRole('button', { name: '単色' }).click();
+  await expect.poll(background).not.toContain('url(');
+  await open.click();
+  await dialog.getByRole('button', { name: '街の夜景' }).click();
+  await expect.poll(background).toContain('night-city-cover.webp');
+});

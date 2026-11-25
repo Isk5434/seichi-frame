@@ -20,12 +20,31 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, #060e1a99, #060e1a15 75%),
-    #101e31 url("night-city-cover.webp") center 47% / cover no-repeat;
+  background-color: var(--wallpaper-color, #101e31);
+  background-image: var(--wallpaper-shade, linear-gradient(90deg, #060e1a99, #060e1a15 75%)), var(--wallpaper-image);
+  background-position: center, var(--wallpaper-position, center 47%);
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+body[data-background="city"], [data-background-choice="city"] {
+  --wallpaper-image: url("night-city-cover.webp");
+}
+body[data-background="stars"], [data-background-choice="stars"] {
+  --wallpaper-image: url("night-sky.webp");
+  --wallpaper-position: center;
+}
+body[data-background="solid"], [data-background-choice="solid"] {
+  --wallpaper-image: none;
+  --wallpaper-color: #0a111d;
+}
+body[data-background="photo"] {
+  --wallpaper-image: var(--wallpaper-photo, none);
+  --wallpaper-position: center;
+  --wallpaper-shade: linear-gradient(90deg, #060e1abf, #060e1a66 80%);
 }
 main { max-width: 1200px; padding: 0 24px; }
 .cover {
+  position: relative;
   min-height: clamp(310px, 37vw, 430px);
   display: flex;
   align-items: center;
@@ -39,6 +58,43 @@ main { max-width: 1200px; padding: 0 24px; }
   font: 500 clamp(2rem, 5vw, 4.25rem)/1.24 var(--serif);
   letter-spacing: .045em;
 }
+#background-open {
+  position: absolute;
+  top: 16px;
+  right: clamp(12px, 4vw, 32px);
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--frame-edge);
+  border-radius: 2px;
+  background: #091320d9;
+  color: inherit;
+}
+#background-dialog {
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 16px;
+  border: 1px solid var(--frame-edge);
+  border-radius: 2px;
+  background: #101c2b;
+  color: inherit;
+}
+#background-dialog::backdrop { background: #03070eb3; }
+#background-dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+#background-dialog h2 { font-size: 1.125rem; }
+#background-dialog .button { min-height: 44px; border-radius: 2px; background: #19283b; color: inherit; }
+.background-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+.background-options button { padding: 4px 4px 7px; border-radius: 2px; font-size: .875rem; }
+.background-options button::before {
+  content: "";
+  display: block;
+  aspect-ratio: 3 / 2;
+  margin-bottom: 7px;
+  background: var(--wallpaper-color, #101e31) var(--wallpaper-image) center / cover no-repeat;
+}
+.background-options button[aria-pressed="true"] { border-color: var(--frame-selected); }
+.background-upload { display: grid; place-items: center; cursor: pointer; }
+.background-upload:focus-within { outline: 2px solid var(--frame-selected); outline-offset: 2px; }
+#background-feedback { margin: 10px 0 0; font-size: .875rem; }
 .app-layout { margin-top: 20px; grid-template-columns: 290px minmax(0, 1fr); }
 .places-panel, .workspace {
   border: 1px solid var(--frame-edge);
@@ -152,7 +208,7 @@ main { max-width: 1200px; padding: 0 24px; }
 .photo-card .user-photo-label { top: 6px; bottom: auto; background: #124d43; color: #f1fff9; font-weight: 700; }
 .photo-card { cursor: zoom-in; }
 
-body:has(.photo-preview[open]) { overflow: hidden; }
+body:has(.photo-preview[open], #background-dialog[open]) { overflow: hidden; }
 .photo-preview {
   position: fixed;
   inset: 0;
@@ -210,7 +266,10 @@ body:has(.photo-preview[open]) { overflow: hidden; }
 #photo-preview-compare { margin-left: auto; border-color: var(--frame-edge); }
 
 @media (max-width: 760px) {
-  body::before { background-position: 77% center; }
+  body[data-background="city"] { --wallpaper-position: 77% center; }
+  body[data-background="stars"], [data-background-choice="stars"] {
+    --wallpaper-image: url("night-sky-mobile.webp");
+  }
   main { padding: 0 12px; }
   .cover {
     min-height: clamp(258px, 73vw, 340px);

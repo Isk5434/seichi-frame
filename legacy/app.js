@@ -1,4 +1,5 @@
-import { photoCollection, photoStore } from './storage.js';
+import { photoCollection, photoStore } from './storage.js?v=wallpaper';
+import { setupBackground } from './background.js';
 import { readPv } from './pv.js';
 
 const prefectureOrder = new Map(
@@ -622,4 +623,5 @@ async function boot() {
     notice('地点データを読み込めませんでした。ネットワーク接続を確認して再読み込みしてください。');
   }
 }
+setupBackground({ validateImage, notice });
 boot();

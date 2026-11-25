@@ -28,7 +28,7 @@ function mediaEndpoint(key) {
   return `/api/media?spotId=${encodeURIComponent(spotId)}&kind=${kind}`;
 }
 
-async function compressImage(blob) {
+export async function compressImage(blob) {
   let bitmap;
   try { bitmap = await createImageBitmap(blob); } catch { return blob; }
   const longest = Math.max(bitmap.width, bitmap.height);
@@ -41,6 +41,14 @@ async function compressImage(blob) {
   bitmap.close();
   const output = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .86));
   return output || blob;
+}
+
+export function getBackground() {
+  return localStore('get', 'appearance:background');
+}
+
+export function saveBackground(choice) {
+  return localStore('put', 'appearance:background', choice);
 }
 
 export async function photoStore(action, key, value) {
