@@ -1,4 +1,10 @@
 import { photoCollection, photoStore } from './storage.js';
+import { readPv } from './pv.js';
+
+const prefectureOrder = new Map(
+  '北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県'
+    .split(' ').map((name, index) => [name, index]),
+);
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -42,28 +48,53 @@ function distance(spot) {
 }
 function filteredSpots() {
   const query = $('#search').value.normalize('NFKC').trim().toLowerCase();
-  const layer = $('#layer').value;
-  const result = state.spots.filter(s => (!layer || s.layer === layer) && (!$('#visited-only').checked || state.visited.has(s.id)) && (!query || `${s.name} ${s.layer} ${s.location || ''} ${s.description}`.normalize('NFKC').toLowerCase().includes(query)));
-  if (state.position) result.sort((a, b) => distance(a) - distance(b));
-  return result;
+  const edition = $('#layer').value;
+  return state.spots.filter(spot =>
+    (!edition || spot.pv.labels.includes(edition)) &&
+    (!$('#visited-only').checked || state.visited.has(spot.id)) &&
+    (!query || `${spot.name} ${spot.layer} ${spot.location || ''} ${spot.pv.labels.join(' ')} ${spot.description}`.normalize('NFKC').toLowerCase().includes(query)),
+  ).sort((a, b) => (prefectureOrder.get(a.prefecture) ?? Infinity) - (prefectureOrder.get(b.prefecture) ?? Infinity) ||
+    (state.position ? distance(a) - distance(b) : 0));
 }
+
+function editionBadge(edition) {
+  const badge = element('span', 'pv-edition', edition);
+  if (edition === '全国編') badge.classList.add('pv-edition-national');
+  return badge;
+}
+
 function renderList() {
   const spots = filteredSpots();
-  $('#result-count').textContent = `${spots.length} 件${state.position ? '・近い順' : ''}`;
+  $('#result-count').textContent = `${spots.length} 件`;
   const fragment = document.createDocumentFragment();
+  let currentPrefecture;
+  let group;
   spots.forEach(spot => {
+    const prefecture = spot.prefecture || '都道府県不明';
+    if (prefecture !== currentPrefecture) {
+      currentPrefecture = prefecture;
+      group = element('section', 'prefecture-group');
+      group.append(element('h3', 'prefecture-tag', prefecture));
+      fragment.append(group);
+    }
     const button = element('button', `spot-card${state.selected?.id === spot.id ? ' active' : ''}`);
     button.setAttribute('aria-pressed', String(state.selected?.id === spot.id));
     button.dataset.spotId = spot.id;
     if (state.visited.has(spot.id)) button.append(element('span', 'visited-mark', '✓'));
     const info = element('span', 'spot-info');
-    info.append(element('strong', '', spot.name), element('span', 'spot-location', spot.location || '所在地不明'), element('small', '', `${spot.photos.length} 枚の参考写真${state.position ? ` · ${distance(spot).toFixed(1)} km` : ''}`));
+    info.append(element('strong', '', spot.name), element('span', 'spot-location', spot.location || '所在地不明'));
+    if (spot.pv.labels.length) {
+      const badges = element('span', 'pv-editions');
+      badges.append(...spot.pv.labels.map(editionBadge));
+      info.append(badges);
+    }
+    info.append(element('small', '', `${spot.photos.length} 枚の参考写真${state.position ? ` · ${distance(spot).toFixed(1)} km` : ''}`));
     button.append(info);
     button.onclick = () => {
       void selectSpot(spot, true);
       if (mobileLayout.matches) $('.spot-detail').scrollIntoView({ block: 'start' });
     };
-    fragment.append(button);
+    group.append(button);
   });
   if (!spots.length) fragment.append(element('p', 'list-empty', '該当する場所がありません。検索語やフィルターを変更してください。'));
   $('#spot-list').replaceChildren(fragment);
@@ -104,10 +135,10 @@ async function selectSpot(spot, fly) {
   setOwnPhotos([]);
   resetAdjustments();
   $('#spot-name').textContent = spot.name;
-  $('#spot-layer').textContent = spot.layer;
   $('#administrative-area').textContent = spot.location || '所在地不明';
   $('#coordinates').textContent = `${spot.lat.toFixed(5)}° N / ${spot.lng.toFixed(5)}° E`;
   $('#description').textContent = spot.description || '説明文はありません。';
+  renderPvDetails(spot);
   $('#directions').href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${spot.lat},${spot.lng}`)}`;
   updateVisit(); renderList(); renderGallery(); showReference();
   if (fly && state.map) state.map.setView([spot.lat, spot.lng], 15);
@@ -127,6 +158,29 @@ async function selectSpot(spot, fly) {
     if (reference) { state.customReference = reference; state.referenceUrl = URL.createObjectURL(reference); showReference(); }
   } catch { if (request === state.selectionRequest) notice('このブラウザでは保存済み写真を読み込めません。写真の比較は引き続き利用できます。'); }
 }
+
+function renderPvDetails(spot) {
+  const heading = $('#spot-layer');
+  heading.replaceChildren();
+  if (spot.pv.labels.length) heading.append(...spot.pv.labels.map(editionBadge));
+  else heading.textContent = spot.layer;
+  const container = $('#pv-links');
+  container.replaceChildren();
+  for (const video of spot.pv.videos) {
+    const timings = video.times.length ? video.times : [null];
+    for (const seconds of timings) {
+      const time = seconds === null ? '動画を開く' : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+      const link = element('a', '', `PV ${video.edition === 'PV' ? '' : `${video.edition} `}${time}`);
+      const url = new URL('https://www.youtube.com/watch');
+      url.searchParams.set('v', video.id);
+      if (seconds !== null) url.searchParams.set('t', `${seconds}s`);
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      container.append(link);
+    }
+  }
+}
 function updateVisit() {
   const visited = state.visited.has(state.selected.id);
   $('#visit').textContent = visited ? '✓ 訪問済み' : '♡ 訪問済みにする';
@@ -140,14 +194,14 @@ function renderGallery() {
   const previewPhotos = [];
   gallery.replaceChildren();
   if (!photos.length && !state.ownPhotos.length) { gallery.append(element('p', 'gallery-empty', 'この地点には写真がありません。端末から写真を追加できます。')); return; }
-  photos.forEach((url, index) => {
+  function addReference(url, index) {
     const button = element('button', `photo-card${index === state.photoIndex && !state.customReference ? ' active' : ''}`);
     button.setAttribute('aria-label', `参考写真 ${index + 1} を拡大`);
     button.setAttribute('aria-haspopup', 'dialog');
     button.setAttribute('aria-pressed', String(index === state.photoIndex && !state.customReference));
     const img = element('img'); img.src = referenceSrc(url, state.selected.photoAssets?.[index]); img.alt = `${state.selected.name} の参考写真 ${index + 1}`; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
     img.onerror = () => { img.hidden = true; button.append(element('span', 'photo-failed', '画像を表示できません')); };
-    button.append(img, element('span', '', String(index + 1)));
+    button.append(img, element('span', '', index === 0 && state.selected.pv.labels.length ? 'PV' : `参考 ${index + 1}`));
     addPreviewPhoto(previewPhotos, button, img, img.src, () => {
       state.photoIndex = index;
       state.customReference = null;
@@ -156,7 +210,8 @@ function renderGallery() {
       showReference();
     });
     gallery.append(button);
-  });
+  }
+  if (photos.length) addReference(photos[0], 0);
   state.ownPhotos.forEach((photo, index) => {
     const active = index === state.ownPhotoIndex;
     const button = element('button', `photo-card user-photo-card${active ? ' user-active' : ''}`);
@@ -174,6 +229,9 @@ function renderGallery() {
     });
     gallery.append(button);
   });
+  for (const [index, url] of photos.entries()) {
+    if (index > 0) addReference(url, index);
+  }
 }
 
 function addPreviewPhoto(photos, button, thumbnail, source, select) {
@@ -192,7 +250,7 @@ const previewNext = $('#photo-preview-next');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let previewPhotos = [];
 let previewIndex = 0;
-let previewObjectUrl;
+const previewSources = new Map();
 let previewAnimation;
 let swipe;
 
@@ -214,18 +272,26 @@ function openPhotoPreview(photos, index, thumbnail) {
   );
 }
 
-function releasePreviewImage() {
+function resetPreviewMotion() {
   previewAnimation?.cancel();
   previewImage.style.translate = '';
-  previewImage.removeAttribute('src');
-  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-  previewObjectUrl = undefined;
+}
+
+function loadPreviewSource(index) {
+  if (!previewSources.has(index)) {
+    const { source } = previewPhotos[index];
+    const image = new Image();
+    image.referrerPolicy = 'no-referrer';
+    image.src = source instanceof Blob ? URL.createObjectURL(source) : source;
+    previewSources.set(index, image);
+  }
+  return previewSources.get(index).src;
 }
 
 function showPreviewPhoto(index, direction = 0) {
-  releasePreviewImage();
+  resetPreviewMotion();
   previewIndex = index;
-  const { source, title } = previewPhotos[index];
+  const { title } = previewPhotos[index];
   $('#photo-preview-title').textContent = title;
   $('#photo-preview-count').textContent = `${index + 1} / ${previewPhotos.length}`;
   previewPrev.disabled = index === 0;
@@ -234,8 +300,9 @@ function showPreviewPhoto(index, direction = 0) {
   previewImage.hidden = false;
   previewError.hidden = true;
   previewCompare.disabled = false;
-  previewObjectUrl = source instanceof Blob ? URL.createObjectURL(source) : undefined;
-  previewImage.src = previewObjectUrl || source;
+  previewImage.src = loadPreviewSource(index);
+  if (index > 0) loadPreviewSource(index - 1);
+  if (index + 1 < previewPhotos.length) loadPreviewSource(index + 1);
   if (direction && !reducedMotion.matches) {
     previewAnimation = previewImage.animate(
       [{ transform: `translateX(${direction * 12}%)`, opacity: .3 }, { transform: 'none', opacity: 1 }],
@@ -244,13 +311,13 @@ function showPreviewPhoto(index, direction = 0) {
   }
 }
 
-function stepPreview(direction) {
+function stepPreview(direction, animate = true) {
   const index = previewIndex + direction;
-  if (index >= 0 && index < previewPhotos.length) showPreviewPhoto(index, direction);
+  if (index >= 0 && index < previewPhotos.length) showPreviewPhoto(index, animate ? direction : 0);
 }
 
-previewPrev.onclick = () => stepPreview(-1);
-previewNext.onclick = () => stepPreview(1);
+previewPrev.onclick = () => stepPreview(-1, false);
+previewNext.onclick = () => stepPreview(1, false);
 previewCompare.onclick = () => {
   const photo = previewPhotos[previewIndex];
   photoPreview.close();
@@ -267,7 +334,7 @@ previewImage.onerror = () => {
 photoPreview.addEventListener('keydown', event => {
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
-    stepPreview(event.key === 'ArrowLeft' ? -1 : 1);
+    stepPreview(event.key === 'ArrowLeft' ? -1 : 1, false);
   }
 });
 
@@ -296,7 +363,12 @@ previewStage.addEventListener('lostpointercapture', () => {
 });
 photoPreview.addEventListener('close', () => {
   if (photoPreview.open) return;
-  releasePreviewImage();
+  resetPreviewMotion();
+  previewImage.removeAttribute('src');
+  for (const image of previewSources.values()) {
+    if (image.src.startsWith('blob:')) URL.revokeObjectURL(image.src);
+  }
+  previewSources.clear();
   previewPhotos = [];
   swipe = undefined;
 });
@@ -518,8 +590,14 @@ $('#locate').onclick = () => {
       state.locationMarker = L.circleMarker(state.position, { radius: 8, color: '#fff', weight: 3, fillColor: '#2676db', fillOpacity: 1 }).addTo(state.map).bindTooltip('現在地');
       state.map.setView(state.position, 12);
     }
-    $('#locate').disabled = false; notice('現在地から近い順に並べました。距離は直線距離です。');
+    $('#locate').disabled = false; notice('都道府県内で現在地に近い順に並べました。距離は直線距離です。');
   }, () => { $('#locate').disabled = false; notice('現在地を取得できませんでした。位置情報の許可と通信状況を確認してください。'); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+};
+$('#places-toggle').onclick = () => {
+  const content = $('#places-content');
+  content.hidden = !content.hidden;
+  $('#places-toggle').setAttribute('aria-expanded', String(!content.hidden));
+  $('#locate').hidden = content.hidden;
 };
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
 window.addEventListener('pagehide', stopCamera);
@@ -529,10 +607,13 @@ async function boot() {
   try {
     const response = await fetch('data/spots.json');
     if (!response.ok) throw new Error();
-    const data = await response.json(); state.spots = data.spots;
+    const data = await response.json();
+    state.spots = data.spots.map(spot => ({ ...spot, pv: readPv(spot) }));
     if (!state.spots.length) throw new Error();
     $('#source-bottom').href = data.sourceUrl;
-    [...new Set(state.spots.map(s => s.layer))].forEach(layer => { const option = element('option', '', layer); option.value = layer; $('#layer').append(option); });
+    for (const edition of new Set(state.spots.flatMap(spot => spot.pv.labels))) {
+      $('#layer').append(new Option(edition, edition));
+    }
     initMap();
     await selectSpot(state.spots[0], false);
   } catch {
