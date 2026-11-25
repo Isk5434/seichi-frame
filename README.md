@@ -4,7 +4,7 @@ Google マイマップの167地点と368枚の参考写真を使い、自分の�
 
 ## GitHub Pages版
 
-`main`へpushすると、`.github/workflows/pages.yml`が`legacy/`をGitHub Pagesへ公開します。Pages版では、自分の写真と訪問記録をブラウザのIndexedDB / localStorageに保存します。写真はスポットごとに複数枚追加でき、青緑の枠と`MY PHOTO`バッジで参考写真から区別します。
+GitHub Pagesの公開元は`gh-pages`ブランチのルートです。`main`の変更を公開するには、作業ツリーを確認してから`git subtree push --prefix=legacy origin gh-pages`を実行します。Pages版では、自分の写真と訪問記録をブラウザのIndexedDB / localStorageに保存します。写真はスポットごとに複数枚追加でき、青緑の枠と`MY PHOTO`バッジで参考写真から区別します。
 
 GitHub Pagesは静的ホスティングのため、Pages版の写真は端末間で同期されません。スマホ・PC同期が必要な場合は、下記のCloudflare版を使用します。参考写真は`npm run prepare:pages`で軽量WebPとして`legacy/images/`へ保存済みです。
 
