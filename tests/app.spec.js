@@ -40,6 +40,8 @@ test('own photos have a marked gallery, stay associated with their spot and can 
   expect(ownBorder).not.toBe(referenceBorder);
   await expect(page.locator('#gallery .user-photo-card.user-active')).toHaveCount(1);
   await page.locator('#gallery .user-photo-card').first().click();
+  await expect(page.locator('#photo-preview-image')).toBeVisible();
+  await page.locator('#photo-preview-compare').click();
   await expect(page.locator('#gallery .user-photo-card').first()).toHaveClass(/user-active/);
   await page.locator('[data-mode=overlay]').click();
   await page.locator('#opacity').fill('72');
@@ -132,6 +134,14 @@ test('mobile fits screen and exposes comparison controls', async ({ page }) => {
   await expect(page.locator('#search')).toBeInViewport();
   await page.locator('.spot-card').first().click();
   await expect(page.locator('.add-photo')).toBeInViewport();
+  await expect(page.locator('body')).toHaveCSS('overflow-y', 'visible');
+  expect(await page.evaluate(() => getComputedStyle(document.body, '::before').position)).toBe('fixed');
+  await page.locator('#gallery .photo-card').first().click();
+  const preview = page.locator('#photo-preview');
+  await expect(preview).toBeVisible();
+  await expect.poll(() => preview.locator('img').evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+  await preview.getByRole('button', { name: '閉じる' }).click();
+  await expect(preview).toBeHidden();
   await page.locator('[data-view=compare]').click();
   await page.locator('[data-mode=overlay]').click();
   await expect(page.locator('#opacity')).toBeVisible();

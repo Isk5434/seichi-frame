@@ -141,28 +141,76 @@ function renderGallery() {
   if (!photos.length && !state.ownPhotos.length) { gallery.append(element('p', 'gallery-empty', 'この地点には写真がありません。端末から写真を追加できます。')); return; }
   photos.forEach((url, index) => {
     const button = element('button', `photo-card${index === state.photoIndex && !state.customReference ? ' active' : ''}`);
-    button.setAttribute('aria-label', `参考写真 ${index + 1} を選択`);
+    button.setAttribute('aria-label', `参考写真 ${index + 1} を拡大`);
+    button.setAttribute('aria-haspopup', 'dialog');
     button.setAttribute('aria-pressed', String(index === state.photoIndex && !state.customReference));
     const img = element('img'); img.src = referenceSrc(url, state.selected.photoAssets?.[index]); img.alt = `${state.selected.name} の参考写真 ${index + 1}`; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
     img.onerror = () => { img.hidden = true; button.append(element('span', 'photo-failed', '画像を表示できません')); };
     button.append(img, element('span', '', String(index + 1)));
-    button.onclick = () => { state.photoIndex = index; state.customReference = null; resetAdjustments(); renderGallery(); showReference(); };
+    button.onclick = () => openPhotoPreview(img.src, img.alt, () => {
+      state.photoIndex = index;
+      state.customReference = null;
+      resetAdjustments();
+      renderGallery();
+      showReference();
+    });
     gallery.append(button);
   });
   state.ownPhotos.forEach((photo, index) => {
     const active = index === state.ownPhotoIndex;
     const button = element('button', `photo-card user-photo-card${active ? ' user-active' : ''}`);
     button.type = 'button';
-    button.setAttribute('aria-label', `自分が追加した写真 ${index + 1} を選択`);
+    button.setAttribute('aria-label', `自分が追加した写真 ${index + 1} を拡大`);
+    button.setAttribute('aria-haspopup', 'dialog');
     button.setAttribute('aria-pressed', String(active));
     const url = URL.createObjectURL(photo.blob);
     state.combinedGalleryUrls.push(url);
     const img = element('img'); img.src = url; img.alt = `自分が追加した写真 ${index + 1}`;
     button.append(img, element('span', 'user-photo-label', 'MY PHOTO'));
-    button.onclick = () => { selectOwnPhoto(index); showComparison(); };
+    button.onclick = () => openPhotoPreview(photo.blob, img.alt, () => {
+      const photoIndex = state.ownPhotos.indexOf(photo);
+      selectOwnPhoto(photoIndex < 0 ? index : photoIndex);
+    });
     gallery.append(button);
   });
 }
+const photoPreview = $('#photo-preview');
+const previewImage = $('#photo-preview-image');
+const previewError = $('#photo-preview-error');
+const previewCompare = $('#photo-preview-compare');
+let previewObjectUrl;
+
+function openPhotoPreview(source, title, selectForComparison) {
+  $('#photo-preview-title').textContent = title;
+  previewImage.alt = title;
+  previewImage.hidden = false;
+  previewError.hidden = true;
+  previewCompare.disabled = false;
+  previewObjectUrl = source instanceof Blob ? URL.createObjectURL(source) : undefined;
+  previewImage.src = previewObjectUrl || source;
+  previewCompare.onclick = () => {
+    photoPreview.close();
+    selectForComparison();
+    showComparison();
+    $('[data-view="compare"]').focus({ preventScroll: true });
+  };
+  photoPreview.showModal();
+}
+
+previewImage.onerror = () => {
+  previewImage.hidden = true;
+  previewError.hidden = false;
+  previewCompare.disabled = true;
+};
+photoPreview.addEventListener('click', event => {
+  if (event.target === photoPreview) photoPreview.close();
+});
+photoPreview.addEventListener('close', () => {
+  previewImage.removeAttribute('src');
+  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+  previewObjectUrl = undefined;
+  previewCompare.onclick = null;
+});
 function showReference() {
   const originalUrl = state.selected?.photos[state.photoIndex];
   const url = state.customReference ? state.referenceUrl : referenceSrc(originalUrl, state.selected?.photoAssets?.[state.photoIndex]);
